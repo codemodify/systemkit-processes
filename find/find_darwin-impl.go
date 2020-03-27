@@ -1,76 +1,29 @@
 // +build darwin
 
-package list
+package find
 
 import (
 	"bytes"
-	"encoding/binary"
 	"syscall"
 	"unsafe"
 )
 
-type DarwinProcess struct {
+type darwinProcess struct {
 	pid    int
 	ppid   int
 	binary string
 }
 
-func (p *DarwinProcess) PID() int {
-	return p.pid
+func (thisRef darwinProcess) PID() int {
+	return thisRef.pid
 }
 
-func (p *DarwinProcess) ParentPID() int {
-	return p.ppid
+func (thisRef darwinProcess) ParentPID() int {
+	return thisRef.ppid
 }
 
-func (p *DarwinProcess) Executable() string {
-	return p.binary
-}
-
-func findProcess(pid int) (Process, error) {
-	ps, err := processes()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, p := range ps {
-		if p.PID() == pid {
-			return p, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func processes() ([]Process, error) {
-	buf, err := darwinSyscall()
-	if err != nil {
-		return nil, err
-	}
-
-	procs := make([]*kinfoProc, 0, 50)
-	k := 0
-	for i := _KINFO_STRUCT_SIZE; i < buf.Len(); i += _KINFO_STRUCT_SIZE {
-		proc := &kinfoProc{}
-		err = binary.Read(bytes.NewBuffer(buf.Bytes()[k:i]), binary.LittleEndian, proc)
-		if err != nil {
-			return nil, err
-		}
-
-		k = i
-		procs = append(procs, proc)
-	}
-
-	darwinProcs := make([]Process, len(procs))
-	for i, p := range procs {
-		darwinProcs[i] = &DarwinProcess{
-			pid:    int(p.Pid),
-			ppid:   int(p.PPid),
-			binary: darwinCstring(p.Comm),
-		}
-	}
-
-	return darwinProcs, nil
+func (thisRef darwinProcess) Executable() string {
+	return thisRef.binary
 }
 
 func darwinCstring(s [16]byte) string {

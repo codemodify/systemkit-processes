@@ -1,12 +1,14 @@
-package list
+package tests
 
 import (
 	"os"
 	"testing"
+
+	"github.com/codemodify/systemkit-processes/find"
 )
 
 func TestFindProcess(t *testing.T) {
-	p, err := FindProcess(os.Getpid())
+	p, err := find.ProcessByPID(os.Getpid())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -22,7 +24,7 @@ func TestFindProcess(t *testing.T) {
 func TestProcesses(t *testing.T) {
 	// This test works because there will always be SOME processes
 	// running.
-	p, err := Processes()
+	p, err := find.AllProcesses()
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -33,7 +35,7 @@ func TestProcesses(t *testing.T) {
 
 	found := false
 	for _, p1 := range p {
-		if p1.Executable() == "go" || p1.Executable() == "go.exe" {
+		if p1.Details().Executable == "go" || p1.Details().Executable == "go.exe" {
 			found = true
 			break
 		}

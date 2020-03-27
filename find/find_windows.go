@@ -1,11 +1,13 @@
 // +build windows
 
-package list
+package find
 
 import (
 	"fmt"
 	"syscall"
 	"unsafe"
+
+	"github.com/codemodify/systemkit-processes/contracts"
 )
 
 // Windows API functions
@@ -23,65 +25,14 @@ const (
 	MAX_PATH            = 260
 )
 
-// PROCESSENTRY32 is the Windows API structure that contains a process's
-// information.
-type PROCESSENTRY32 struct {
-	Size              uint32
-	CntUsage          uint32
-	ProcessID         uint32
-	DefaultHeapID     uintptr
-	ModuleID          uint32
-	CntThreads        uint32
-	ParentProcessID   uint32
-	PriorityClassBase int32
-	Flags             uint32
-	ExeFile           [MAX_PATH]uint16
-}
-
-// WindowsProcess is an implementation of Process for Windows.
-type WindowsProcess struct {
-	pid  int
-	ppid int
-	exe  string
-}
-
-func (p *WindowsProcess) PID() int {
-	return p.pid
-}
-
-func (p *WindowsProcess) ParentPID() int {
-	return p.ppid
-}
-
-func (p *WindowsProcess) Executable() string {
-	return p.exe
-}
-
-func newWindowsProcess(e *PROCESSENTRY32) *WindowsProcess {
-	// Find when the string ends for decoding
-	end := 0
-	for {
-		if e.ExeFile[end] == 0 {
-			break
-		}
-		end++
-	}
-
-	return &WindowsProcess{
-		pid:  int(e.ProcessID),
-		ppid: int(e.ParentProcessID),
-		exe:  syscall.UTF16ToString(e.ExeFile[:end]),
-	}
-}
-
-func findProcess(pid int) (Process, error) {
-	ps, err := processes()
+func processByPID(pid int) (contracts.RuntimeProcess, error) {
+	ps, err := allProcesses()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, p := range ps {
-		if p.PID() == pid {
+		if thisRef.PID() == pid {
 			return p, nil
 		}
 	}
@@ -89,7 +40,7 @@ func findProcess(pid int) (Process, error) {
 	return nil, nil
 }
 
-func processes() ([]Process, error) {
+func allProcesses() ([]contracts.RuntimeProcess, error) {
 	handle, _, _ := procCreateToolhelp32Snapshot.Call(
 		0x00000002,
 		0)
@@ -105,7 +56,7 @@ func processes() ([]Process, error) {
 		return nil, fmt.Errorf("Error retrieving process info.")
 	}
 
-	results := make([]Process, 0, 50)
+	results := make([]contracts.RuntimeProcess, 0, 50)
 	for {
 		results = append(results, newWindowsProcess(&entry))
 

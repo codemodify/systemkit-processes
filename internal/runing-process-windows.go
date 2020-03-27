@@ -1,6 +1,6 @@
 // +build windows
 
-package monitor
+package internal
 
 import (
 	"fmt"

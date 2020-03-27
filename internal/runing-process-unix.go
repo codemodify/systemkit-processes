@@ -1,5 +1,5 @@
 // +build !windows
 
-package monitor
+package internal
 
 func processKillHelper(pid int) {}

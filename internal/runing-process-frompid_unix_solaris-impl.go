@@ -1,6 +1,6 @@
 // +build solaris
 
-package list
+package internal
 
 import (
 	"encoding/binary"
@@ -66,10 +66,10 @@ type psinfo_t struct {
 	Pr_lwp      [128]byte /* information for representative lwp */
 }
 
-func (p *UnixProcess) Refresh() error {
+func (thisRef *unixProcess) fetchProcMedata() error {
 	var psinfo psinfo_t
 
-	path := fmt.Sprintf("/proc/%d/psinfo", p.pid)
+	path := fmt.Sprintf("/proc/%d/psinfo", thisRef.pid)
 	fh, err := os.Open(path)
 	if err != nil {
 		return err
@@ -81,8 +81,8 @@ func (p *UnixProcess) Refresh() error {
 		return err
 	}
 
-	p.ppid = int(psinfo.Pr_ppid)
-	p.binary = toString(psinfo.Pr_fname[:], 16)
+	thisRef.parentPID = int(psinfo.Pr_ppid)
+	thisRef.details.Executable = toString(psinfo.Pr_fname[:], 16)
 	return nil
 }
 
