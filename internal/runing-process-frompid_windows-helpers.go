@@ -1,9 +1,12 @@
 // +build windows
 
-package find
+package internal
 
 import (
+	"os"
 	"syscall"
+
+	"github.com/codemodify/systemkit-processes/contracts"
 )
 
 // Windows API functions
@@ -36,27 +39,8 @@ type PROCESSENTRY32 struct {
 	ExeFile           [MAX_PATH]uint16
 }
 
-// windowsProcess is an implementation of contracts.RuntimeProcess for Windows.
-type windowsProcess struct {
-	pid  int
-	ppid int
-	exe  string
-}
-
-func (thisRef windowsProcess) PID() int {
-	return thisRef.pid
-}
-
-func (thisRef windowsProcess) ParentPID() int {
-	return thisRef.ppid
-}
-
-func (thisRef windowsProcess) Executable() string {
-	return thisRef.exe
-}
-
-func newWindowsProcess(e *PROCESSENTRY32) *windowsProcess {
-	// Find when the string ends for decoding
+func existingWindowsProcessFromProcEntry(e *PROCESSENTRY32) (contracts.RuningProcess, error) {
+	// find where the string ends
 	end := 0
 	for {
 		if e.ExeFile[end] == 0 {
@@ -65,9 +49,18 @@ func newWindowsProcess(e *PROCESSENTRY32) *windowsProcess {
 		end++
 	}
 
-	return &windowsProcess{
-		pid:  int(e.ProcessID),
-		ppid: int(e.ParentProcessID),
-		exe:  syscall.UTF16ToString(e.ExeFile[:end]),
+	// build the object
+	osProcess, err := os.FindProcess(int(e.ProcessID))
+	if err != nil {
+		return NewEmptyRuningProcess(), err
 	}
+
+	// FIXME: int(e.ParentProcessID)
+
+	return NewRuningProcessWithOSProc(
+		contracts.ProcessTemplate{
+			Executable: syscall.UTF16ToString(e.ExeFile[:end]),
+		},
+		osProcess,
+	), nil
 }

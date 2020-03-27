@@ -1,4 +1,6 @@
-package main
+// +build windows
+
+package tests
 
 import (
 	"fmt"
@@ -14,29 +16,28 @@ import (
 )
 
 func Test_01(t *testing.T) {
-	const logId = "Test_01"
+	const logID = "Test_01"
 
 	logging.Init(logging.NewEasyLoggerForLogger(loggingP.NewFileLogger(loggingC.TypeDebug, "log1.log")))
 
 	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"message": fmt.Sprintf("%s: START", logId),
+		"message": fmt.Sprintf("%s: START", logID),
 	})
 
 	processID := "test-id"
 
 	monitor := procMon.New()
 	monitor.Spawn(processID, contracts.ProcessTemplate{
-		// Executable: "htop",
-		Executable: "sh",
-		Args:       []string{"-c", "while :; do echo 'Hit CTRL+C'; echo aaaaaaa 1>&2; sleep 1; done"},
+		Executable: "notepad.exe",
+		Args:       []string{},
 		OnStdOut: func(data []byte) {
 			logging.Instance().LogDebugWithFields(loggingC.Fields{
-				"message": fmt.Sprintf("%s: OnStdOut: %v", logId, string(data)),
+				"message": fmt.Sprintf("%s: OnStdOut: %v", logID, string(data)),
 			})
 		},
 		OnStdErr: func(data []byte) {
 			logging.Instance().LogDebugWithFields(loggingC.Fields{
-				"message": fmt.Sprintf("%s: OnStdErr: %v", logId, string(data)),
+				"message": fmt.Sprintf("%s: OnStdErr: %v", logID, string(data)),
 			})
 		},
 	})
@@ -44,7 +45,7 @@ func Test_01(t *testing.T) {
 	logging.Instance().LogInfoWithFields(loggingC.Fields{
 		"message": fmt.Sprintf(
 			"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
-			logId,
+			logID,
 			monitor.GetRuningProcess(processID).IsRunning(),
 			monitor.GetRuningProcess(processID).ExitCode(),
 			monitor.GetRuningProcess(processID).StartedAt(),
@@ -52,11 +53,28 @@ func Test_01(t *testing.T) {
 		),
 	})
 
+	// WAIT 5 seconds
+	ticker := time.NewTicker(1 * time.Second)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case t := <-ticker.C:
+				logging.Instance().LogDebugWithFields(loggingC.Fields{
+					"message": fmt.Sprintf("%s: Tick at, %v", logID, t),
+				})
+			}
+		}
+	}()
 	time.Sleep(5 * time.Second)
+	ticker.Stop()
+	done <- true
 
-	// stop
+	// STOP
 	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"message": fmt.Sprintf("%s: STOP", logId),
+		"message": fmt.Sprintf("%s: STOP", logID),
 	})
 
 	monitor.Stop(processID)
@@ -64,7 +82,7 @@ func Test_01(t *testing.T) {
 	logging.Instance().LogInfoWithFields(loggingC.Fields{
 		"message": fmt.Sprintf(
 			"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
-			logId,
+			logID,
 			monitor.GetRuningProcess(processID).IsRunning(),
 			monitor.GetRuningProcess(processID).ExitCode(),
 			monitor.GetRuningProcess(processID).StartedAt(),

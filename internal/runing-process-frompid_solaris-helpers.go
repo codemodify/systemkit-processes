@@ -66,24 +66,26 @@ type psinfo_t struct {
 	Pr_lwp      [128]byte /* information for representative lwp */
 }
 
-func (thisRef *unixProcess) fetchProcMedata() error {
-	var psinfo psinfo_t
-
-	path := fmt.Sprintf("/proc/%d/psinfo", thisRef.pid)
+func fetchProcMedata(pid int) (unixProcMedata, error) {
+	path := fmt.Sprintf("/proc/%d/psinfo", pid)
 	fh, err := os.Open(path)
 	if err != nil {
-		return err
+		return unixProcMedata{}, err
 	}
 	defer fh.Close()
 
+	var psinfo psinfo_t
 	err = binary.Read(fh, binary.LittleEndian, &psinfo)
 	if err != nil {
-		return err
+		return unixProcMedata{}, err
 	}
 
-	thisRef.parentPID = int(psinfo.Pr_ppid)
-	thisRef.details.Executable = toString(psinfo.Pr_fname[:], 16)
-	return nil
+	result := unixProcMedata{
+		ParentPID:  int(psinfo.Pr_ppid),
+		Executable: toString(psinfo.Pr_fname[:], 16),
+	}
+
+	return result, nil
 }
 
 func toString(array []byte, len int) string {
