@@ -7,6 +7,8 @@
 
 #### Robust system process management, spawn and monitor,
 
+#### Supported: Linux, Raspberry Pi, FreeBSD, Mac OS, Windows, Solaris
+
 # ![](https://fonts.gstatic.com/s/i/materialicons/bookmarks/v4/24px.svg) Install
 ```go
 go get github.com/codemodify/systemkit-processes
