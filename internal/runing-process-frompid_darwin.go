@@ -1,30 +1,31 @@
 // +build darwin
 
-package find
+package internal
 
 import (
 	"bytes"
 	"encoding/binary"
+	"os"
 
 	"github.com/codemodify/systemkit-processes/contracts"
 )
 
-func processByPID(pid int) (contracts.RuntimeProcess, error) {
+func processByPID(pid int) (contracts.RuningProcess, error) {
 	ps, err := allProcesses()
 	if err != nil {
-		return nil, err
+		return NewEmptyRuningProcess(), err
 	}
 
 	for _, p := range ps {
-		if thisRef.PID() == pid {
+		if p.PID() == pid {
 			return p, nil
 		}
 	}
 
-	return nil, nil
+	return NewEmptyRuningProcess(), nil
 }
 
-func allProcesses() ([]contracts.RuntimeProcess, error) {
+func allProcesses() ([]contracts.RuningProcess, error) {
 	buf, err := darwinSyscall()
 	if err != nil {
 		return nil, err
@@ -43,14 +44,22 @@ func allProcesses() ([]contracts.RuntimeProcess, error) {
 		procs = append(procs, proc)
 	}
 
-	darwinProcs := make([]contracts.RuntimeProcess, len(procs))
+	rps := make([]contracts.RuningProcess, len(procs))
 	for i, p := range procs {
-		darwinProcs[i] = &darwinProcess{
-			pid:    int(thisRef.Pid),
-			ppid:   int(thisRef.PPid),
-			binary: darwinCstring(thisRef.Comm),
+		osProcess, err := os.FindProcess(int(p.Pid))
+		if err != nil {
+			rps[i] = NewEmptyRuningProcess()
+		} else {
+			rps[i] = NewRuningProcessWithOSProc(
+				contracts.ProcessTemplate{
+					Executable: darwinCstring(p.Comm),
+				},
+				osProcess,
+			)
+
+			// rps[i].ParentPID() = int(p.PPid)
 		}
 	}
 
-	return darwinProcs, nil
+	return rps, nil
 }

@@ -12,5 +12,5 @@ func ProcessByPID(pid int) (contracts.RuningProcess, error) {
 
 // AllProcesses - returns all processes
 func AllProcesses() ([]contracts.RuningProcess, error) {
-	return allProcesses()
+	return internal.AllProcesses()
 }

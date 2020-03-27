@@ -8,3 +8,8 @@ import (
 func ProcessByPID(pid int) (contracts.RuningProcess, error) {
 	return processByPID(pid)
 }
+
+// AllProcesses - returns all processes
+func AllProcesses() ([]contracts.RuningProcess, error) {
+	return allProcesses()
+}

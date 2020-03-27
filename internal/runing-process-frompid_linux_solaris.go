@@ -1,14 +1,27 @@
 // +build linux solaris
 
-package find
+package internal
 
 import (
-	"io"
+	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/codemodify/systemkit-processes/contracts"
 )
+
+func processByPID(pid int) (contracts.RuningProcess, error) {
+	dir := fmt.Sprintf("/proc/%d", pid)
+	_, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return NewEmptyRuningProcess(), nil
+		}
+
+		return nil, err
+	}
+
+	return existingUnixProcessByPID(pid)
+}
 
 func allProcesses() ([]contracts.RuningProcess, error) {
 	d, err := os.Open("/proc")

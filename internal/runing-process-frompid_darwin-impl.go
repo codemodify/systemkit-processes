@@ -1,30 +1,12 @@
 // +build darwin
 
-package find
+package internal
 
 import (
 	"bytes"
 	"syscall"
 	"unsafe"
 )
-
-type darwinProcess struct {
-	pid    int
-	ppid   int
-	binary string
-}
-
-func (thisRef darwinProcess) PID() int {
-	return thisRef.pid
-}
-
-func (thisRef darwinProcess) ParentPID() int {
-	return thisRef.ppid
-}
-
-func (thisRef darwinProcess) Executable() string {
-	return thisRef.binary
-}
 
 func darwinCstring(s [16]byte) string {
 	i := 0

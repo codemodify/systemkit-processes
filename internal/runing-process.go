@@ -27,6 +27,11 @@ type runingProcessImpl struct {
 	lastError       error
 }
 
+// NewEmptyRuningProcess -
+func NewEmptyRuningProcess() contracts.RuningProcess {
+	return NewRuningProcess(contracts.ProcessTemplate{})
+}
+
 // NewRuningProcess -
 func NewRuningProcess(processTemplate contracts.ProcessTemplate) contracts.RuningProcess {
 	return &runingProcessImpl{
@@ -194,6 +199,7 @@ func (thisRef *runingProcessImpl) Stop() error {
 	count := 0
 	maxStopAttempts := 20
 	for {
+		// try #
 		count++
 		if count > maxStopAttempts {
 			thisRef.lastError = fmt.Errorf("%s: can't stop %s with PID %d", logID, thisRef.processTemplate.Executable, thisRef.PID())
@@ -206,10 +212,17 @@ func (thisRef *runingProcessImpl) Stop() error {
 			break
 		}
 
+		// break if DONE
 		if !thisRef.IsRunning() {
+			logging.Instance().LogDebugWithFields(loggingC.Fields{
+				"method":  helpersReflect.GetThisFuncName(),
+				"message": fmt.Sprintf("%s: stopped [%s]", logID, thisRef.processTemplate.Executable),
+			})
+
 			break
 		}
 
+		// log the attempt #
 		logging.Instance().LogDebugWithFields(loggingC.Fields{
 			"method":  helpersReflect.GetThisFuncName(),
 			"message": fmt.Sprintf("%s: attempt #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable),

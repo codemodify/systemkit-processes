@@ -59,7 +59,7 @@ func (thisRef *processMonitor) Start(id string) error {
 
 	logging.Instance().LogDebugWithFields(loggingC.Fields{
 		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: attempting to start [%s]", logID, id),
+		"message": fmt.Sprintf("%s: requesting to start [%s]", logID, id),
 	})
 
 	err := thisRef.procs[id].Start()
@@ -79,7 +79,7 @@ func (thisRef *processMonitor) Start(id string) error {
 func (thisRef *processMonitor) Stop(id string) error {
 	logging.Instance().LogDebugWithFields(loggingC.Fields{
 		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: attempting to stop [%s]", logID, id),
+		"message": fmt.Sprintf("%s: requesting to stop [%s]", logID, id),
 	})
 
 	if !thisRef.GetRuningProcess(id).IsRunning() {
@@ -109,7 +109,7 @@ func (thisRef processMonitor) StopAll() []error {
 
 	logging.Instance().LogDebugWithFields(loggingC.Fields{
 		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: attempting to stop all", logID),
+		"message": fmt.Sprintf("%s: requesting to stop all", logID),
 	})
 
 	allErrors := []error{}
@@ -127,7 +127,7 @@ func (thisRef processMonitor) GetRuningProcess(id string) contracts.RuningProces
 
 	// CHECK-IF-EXISTS
 	if _, ok := thisRef.procs[id]; !ok {
-		return internal.NewRuningProcess(contracts.ProcessTemplate{})
+		return internal.NewEmptyRuningProcess()
 	}
 
 	return thisRef.procs[id]
