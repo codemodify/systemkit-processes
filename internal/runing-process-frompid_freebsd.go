@@ -1,6 +1,6 @@
 // +build freebsd
 
-package find
+package internal
 
 import (
 	"unsafe"
@@ -8,16 +8,7 @@ import (
 	"github.com/codemodify/systemkit-processes/contracts"
 )
 
-// copied from sys/sysctl.h
-const (
-	CTL_KERN           = 1  // "high kernel": proc, limits
-	KERN_PROC          = 14 // struct: process entries
-	KERN_PROC_PID      = 1  // by process id
-	KERN_PROC_PROC     = 8  // only return procs
-	KERN_PROC_PATHNAME = 12 // path to executable
-)
-
-func processByPID(pid int) (contracts.RuntimeProcess, error) {
+func processByPID(pid int) (contracts.RuningProcess, error) {
 	mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, int32(pid)}
 
 	_, _, err := call_syscall(mib)
@@ -25,11 +16,11 @@ func processByPID(pid int) (contracts.RuntimeProcess, error) {
 		return nil, err
 	}
 
-	return newUnixProcess(pid)
+	return existingUnixProcessByPID(pid)
 }
 
-func allProcesses() ([]contracts.RuntimeProcess, error) {
-	results := make([]contracts.RuntimeProcess, 0, 50)
+func allProcesses() ([]contracts.RuningProcess, error) {
+	results := make([]contracts.RuningProcess, 0, 50)
 
 	mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PROC, 0}
 	buf, length, err := call_syscall(mib)
@@ -49,11 +40,11 @@ func allProcesses() ([]contracts.RuntimeProcess, error) {
 		if err != nil {
 			continue
 		}
-		p, err := newUnixProcess(int(k.Ki_pid))
+		p, err := existingUnixProcessByPID(int(k.Ki_pid))
 		if err != nil {
 			continue
 		}
-		thisRef.ppid, thisRef.pgrp, thisRef.sid, thisRef.binary = copy_params(&k)
+		// p.ppid, p.pgrp, p.sid, p.binary = copy_params(&k)
 
 		results = append(results, p)
 	}

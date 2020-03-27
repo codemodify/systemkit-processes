@@ -1,12 +1,15 @@
 // +build freebsd
 
-package find
+package internal
 
 import (
 	"bytes"
 	"encoding/binary"
+	"os"
 	"syscall"
 	"unsafe"
+
+	"github.com/codemodify/systemkit-processes/contracts"
 )
 
 // copied from sys/sysctl.h
@@ -101,51 +104,51 @@ type Kinfo_proc struct {
 	Ki_tdflags      int64
 }
 
-// freebsdProcess is an implementation of contracts.RuntimeProcess that contains Unix-specific
-// fields and information.
-type freebsdProcess struct {
-	pid   int
-	ppid  int
-	state rune
-	pgrp  int
-	sid   int
+func existingUnixProcessByPID(pid int) (contracts.RuningProcess, error) {
+	upm, err := fetchProcMedata(pid)
+	if err != nil {
+		return NewEmptyRuningProcess(), err
+	}
 
-	binary string
+	osProcess, err := os.FindProcess(pid)
+	if err != nil {
+		return NewEmptyRuningProcess(), err
+	}
+
+	return NewRuningProcessWithOSProc(
+		contracts.ProcessTemplate{
+			Executable: upm.Executable,
+		},
+		osProcess,
+	), nil
 }
 
-func (thisRef freebsdProcess) PID() int {
-	return thisRef.pid
-}
-
-func (thisRef freebsdProcess) ParentPID() int {
-	return thisRef.ppid
-}
-
-func (thisRef freebsdProcess) Executable() string {
-	return thisRef.binary
-}
-
-// Refresh reloads all the data associated with this process.
-func (thisRef freebsdProcess) Refresh() error {
-
-	mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PID, int32(thisRef.pid)}
+func fetchProcMedata(pid int) (unixProcMedata, error) {
+	mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PID, int32(pid)}
 
 	buf, length, err := call_syscall(mib)
 	if err != nil {
-		return err
+		return unixProcMedata{}, err
 	}
+
 	proc_k := Kinfo_proc{}
 	if length != uint64(unsafe.Sizeof(proc_k)) {
-		return err
+		return unixProcMedata{}, err
 	}
 
 	k, err := parse_kinfo_proc(buf)
 	if err != nil {
-		return err
+		return unixProcMedata{}, err
 	}
 
-	thisRef.ppid, thisRef.pgrp, thisRef.sid, thisRef.binary = copy_params(&k)
-	return nil
+	ppid, pgrp, sid, binary := copy_params(&k)
+
+	return unixProcMedata{
+		ParentPID:  ppid,
+		Pgrp:       pgrp,
+		Sid:        sid,
+		Executable: binary,
+	}, nil
 }
 
 func copy_params(k *Kinfo_proc) (int, int, int, string) {
@@ -208,9 +211,4 @@ func call_syscall(mib []int32) ([]byte, uint64, error) {
 	}
 
 	return buf, length, nil
-}
-
-func newUnixProcess(pid int) (*freebsdProcess, error) {
-	p := &freebsdProcess{pid: pid}
-	return p, thisRef.Refresh()
 }
