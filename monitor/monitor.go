@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	helpersJSON "github.com/codemodify/systemkit-helpers"
-	helpersReflect "github.com/codemodify/systemkit-helpers"
+	helpersJSON "github.com/codemodify/systemkit-helpers-conv"
+	helpersReflect "github.com/codemodify/systemkit-helpers-reflection"
 	logging "github.com/codemodify/systemkit-logging"
-	loggingC "github.com/codemodify/systemkit-logging/contracts"
 	"github.com/codemodify/systemkit-processes/contracts"
 	"github.com/codemodify/systemkit-processes/internal"
 )
@@ -30,10 +29,7 @@ func New() contracts.Monitor {
 
 // Spawn -
 func (thisRef *processMonitor) Spawn(id string, processTemplate contracts.ProcessTemplate) error {
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: preparing to spawn [%s], details [%s]", logID, id, helpersJSON.AsJSONString(processTemplate)),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: preparing to spawn [%s], details [%s]", logID, id, helpersJSON.AsJSONString(processTemplate)), helpersReflect.GetThisFuncName())
 
 	thisRef.procsSync.Lock()
 
@@ -57,18 +53,11 @@ func (thisRef *processMonitor) Start(id string) error {
 		return fmt.Errorf("ID %s, CHECK-IF-EXISTS failed", id)
 	}
 
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: requesting to start [%s]", logID, id),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to start [%s]", logID, id), helpersReflect.GetThisFuncName())
 
 	err := thisRef.procs[id].Start()
 	if err != nil {
-		logging.Instance().LogErrorWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": fmt.Sprintf("%s: error starting [%s], details [%s]", logID, thisRef.procs[id], err.Error()),
-		})
-
+		logging.Instance().Errorf("%s, from %s", fmt.Sprintf("%s: error starting [%s], details [%s]", logID, thisRef.procs[id], err.Error()), helpersReflect.GetThisFuncName())
 		return err
 	}
 
@@ -77,10 +66,7 @@ func (thisRef *processMonitor) Start(id string) error {
 
 // Stop -
 func (thisRef *processMonitor) Stop(id string) error {
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: requesting to stop [%s]", logID, id),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to stop [%s]", logID, id), helpersReflect.GetThisFuncName())
 
 	if !thisRef.GetRuningProcess(id).IsRunning() {
 		return nil
@@ -107,10 +93,7 @@ func (thisRef processMonitor) StopAll() []error {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: requesting to stop all", logID),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to stop all", logID), helpersReflect.GetThisFuncName())
 
 	allErrors := []error{}
 	for k := range thisRef.procs {

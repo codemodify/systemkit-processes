@@ -9,10 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	helpersReflect "github.com/codemodify/systemkit-helpers"
-	helpersStrings "github.com/codemodify/systemkit-helpers"
+	helpersStrings "github.com/codemodify/systemkit-helpers-conv"
+	helpersReflect "github.com/codemodify/systemkit-helpers-reflection"
 	logging "github.com/codemodify/systemkit-logging"
-	loggingC "github.com/codemodify/systemkit-logging/contracts"
 	"github.com/codemodify/systemkit-processes/contracts"
 )
 
@@ -78,11 +77,7 @@ func (thisRef *runingProcessImpl) Start() error {
 	stdOutPipe, err := thisRef.osCmd.StdoutPipe()
 	if err != nil {
 		detailedErr := fmt.Errorf("%s: failed to get StdoutPipe for [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-
-		logging.Instance().LogErrorWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": detailedErr.Error(),
-		})
+		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
 
 		return detailedErr
 	}
@@ -90,11 +85,7 @@ func (thisRef *runingProcessImpl) Start() error {
 	stdErrPipe, err := thisRef.osCmd.StderrPipe()
 	if err != nil {
 		detailedErr := fmt.Errorf("%s, failed to get StderrPipe for [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-
-		logging.Instance().LogErrorWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": detailedErr.Error(),
-		})
+		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
 
 		return detailedErr
 	}
@@ -106,10 +97,7 @@ func (thisRef *runingProcessImpl) Start() error {
 		go readStdErrFromProc(stdErrPipe, thisRef.processTemplate)
 	}
 
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: starting [%s]", logID, thisRef.processTemplate.Executable),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting [%s]", logID, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
 
 	err = thisRef.osCmd.Start()
 	if err != nil {
@@ -117,11 +105,7 @@ func (thisRef *runingProcessImpl) Start() error {
 		thisRef.stoppedAt = time.Now()
 
 		detailedErr := fmt.Errorf("%s, failed to start [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-
-		logging.Instance().LogErrorWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": detailedErr.Error(),
-		})
+		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
 
 		return detailedErr
 	}
@@ -204,29 +188,19 @@ func (thisRef *runingProcessImpl) Stop() error {
 		if count > maxStopAttempts {
 			thisRef.lastError = fmt.Errorf("%s: can't stop %s with PID %d", logID, thisRef.processTemplate.Executable, thisRef.PID())
 
-			logging.Instance().LogErrorWithFields(loggingC.Fields{
-				"method":  helpersReflect.GetThisFuncName(),
-				"message": thisRef.lastError.Error(),
-			})
+			logging.Instance().Errorf("%s, from %s", thisRef.lastError.Error(), helpersReflect.GetThisFuncName())
 
 			break
 		}
 
 		// break if DONE
 		if !thisRef.IsRunning() {
-			logging.Instance().LogDebugWithFields(loggingC.Fields{
-				"method":  helpersReflect.GetThisFuncName(),
-				"message": fmt.Sprintf("%s: stopped [%s]", logID, thisRef.processTemplate.Executable),
-			})
-
+			logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: stopped [%s]", logID, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
 			break
 		}
 
 		// log the attempt #
-		logging.Instance().LogDebugWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": fmt.Sprintf("%s: attempt #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable),
-		})
+		logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: attempt #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
 
 		thisRef.osCmd.Process.Signal(syscall.SIGINT)
 		thisRef.osCmd.Process.Signal(syscall.SIGTERM)
@@ -253,10 +227,7 @@ func (thisRef runingProcessImpl) Details() contracts.ProcessTemplate {
 }
 
 func readStdOutFromProc(readerCloser io.ReadCloser, processTemplate contracts.ProcessTemplate) {
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: starting to read StdOut for [%s]", logID, processTemplate.Executable),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting to read StdOut for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
 
 	reader := bufio.NewReader(readerCloser)
 	line, _, err := reader.ReadLine()
@@ -266,23 +237,14 @@ func readStdOutFromProc(readerCloser io.ReadCloser, processTemplate contracts.Pr
 	}
 
 	if err != nil {
-		logging.Instance().LogWarningWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": fmt.Sprintf("%s: error reading StdOut for [%s], details [%s]", logID, processTemplate.Executable, err.Error()),
-		})
+		logging.Instance().Warningf("%s, from %s", fmt.Sprintf("%s: error reading StdOut for [%s], details [%s]", logID, processTemplate.Executable, err.Error()), helpersReflect.GetThisFuncName())
 	}
 
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: finished to read StdOut for [%s]", logID, processTemplate.Executable),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: finished to read StdOut for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
 }
 
 func readStdErrFromProc(readerCloser io.ReadCloser, processTemplate contracts.ProcessTemplate) {
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: starting to read StdErr for [%s]", logID, processTemplate.Executable),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting to read StdErr for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
 
 	reader := bufio.NewReader(readerCloser)
 	line, _, err := reader.ReadLine()
@@ -292,14 +254,8 @@ func readStdErrFromProc(readerCloser io.ReadCloser, processTemplate contracts.Pr
 	}
 
 	if err != nil {
-		logging.Instance().LogWarningWithFields(loggingC.Fields{
-			"method":  helpersReflect.GetThisFuncName(),
-			"message": fmt.Sprintf("%s: error reading StdErr for [%s], details [%s]", logID, processTemplate.Executable, err.Error()),
-		})
+		logging.Instance().Warningf("%s, from %s", fmt.Sprintf("%s: error reading StdErr for [%s], details [%s]", logID, processTemplate.Executable, err.Error()), helpersReflect.GetThisFuncName())
 	}
 
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"method":  helpersReflect.GetThisFuncName(),
-		"message": fmt.Sprintf("%s: finished to read StdErr for [%s]", logID, processTemplate.Executable),
-	})
+	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: finished to read StdErr for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
 }

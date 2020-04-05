@@ -8,21 +8,13 @@ import (
 	"time"
 
 	logging "github.com/codemodify/systemkit-logging"
-	loggingC "github.com/codemodify/systemkit-logging/contracts"
-	loggingP "github.com/codemodify/systemkit-logging/persisters"
 
 	"github.com/codemodify/systemkit-processes/contracts"
 	procMon "github.com/codemodify/systemkit-processes/monitor"
 )
 
-func Test_01(t *testing.T) {
+func Test_02(t *testing.T) {
 	const logID = "Test_01"
-
-	logging.Init(logging.NewEasyLoggerForLogger(loggingP.NewFileLogger(loggingC.TypeDebug, "log1.log")))
-
-	logging.Instance().LogDebugWithFields(loggingC.Fields{
-		"message": fmt.Sprintf("%s: START", logID),
-	})
 
 	processID := "test-id"
 
@@ -31,27 +23,21 @@ func Test_01(t *testing.T) {
 		Executable: "notepad.exe",
 		Args:       []string{},
 		OnStdOut: func(data []byte) {
-			logging.Instance().LogDebugWithFields(loggingC.Fields{
-				"message": fmt.Sprintf("%s: OnStdOut: %v", logID, string(data)),
-			})
+			logging.Instance().Debugf("%s: OnStdOut: %v", logID, string(data))
 		},
 		OnStdErr: func(data []byte) {
-			logging.Instance().LogDebugWithFields(loggingC.Fields{
-				"message": fmt.Sprintf("%s: OnStdErr: %v", logID, string(data)),
-			})
+			logging.Instance().Debugf("%s: OnStdErr: %v", logID, string(data))
 		},
 	})
 
-	logging.Instance().LogInfoWithFields(loggingC.Fields{
-		"message": fmt.Sprintf(
-			"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
-			logID,
-			monitor.GetRuningProcess(processID).IsRunning(),
-			monitor.GetRuningProcess(processID).ExitCode(),
-			monitor.GetRuningProcess(processID).StartedAt(),
-			monitor.GetRuningProcess(processID).StoppedAt(),
-		),
-	})
+	logging.Instance().Infof(
+		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
+		logID,
+		monitor.GetRuningProcess(processID).IsRunning(),
+		monitor.GetRuningProcess(processID).ExitCode(),
+		monitor.GetRuningProcess(processID).StartedAt(),
+		monitor.GetRuningProcess(processID).StoppedAt(),
+	)
 
 	// WAIT 5 seconds
 	ticker := time.NewTicker(1 * time.Second)
@@ -62,9 +48,7 @@ func Test_01(t *testing.T) {
 			case <-done:
 				return
 			case t := <-ticker.C:
-				logging.Instance().LogDebugWithFields(loggingC.Fields{
-					"message": fmt.Sprintf("%s: Tick at, %v", logID, t),
-				})
+				logging.Instance().Debugf("%s: Tick at, %v", logID, t)
 			}
 		}
 	}()
@@ -79,14 +63,12 @@ func Test_01(t *testing.T) {
 
 	monitor.Stop(processID)
 
-	logging.Instance().LogInfoWithFields(loggingC.Fields{
-		"message": fmt.Sprintf(
-			"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
-			logID,
-			monitor.GetRuningProcess(processID).IsRunning(),
-			monitor.GetRuningProcess(processID).ExitCode(),
-			monitor.GetRuningProcess(processID).StartedAt(),
-			monitor.GetRuningProcess(processID).StoppedAt(),
-		),
-	})
+	logging.Instance().Infof(
+		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
+		logID,
+		monitor.GetRuningProcess(processID).IsRunning(),
+		monitor.GetRuningProcess(processID).ExitCode(),
+		monitor.GetRuningProcess(processID).StartedAt(),
+		monitor.GetRuningProcess(processID).StoppedAt(),
+	)
 }
