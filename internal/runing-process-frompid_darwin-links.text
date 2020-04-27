@@ -1,0 +1,9 @@
+https://github.com/sbinet/pmon/blob/master/collector_darwin.go
+https://github.com/mindreframer/golang-stuff/blob/master/github.com/jondot/gosigar/sigar_darwin.go
+https://github.com/sbinet/pmon/blob/master/collector_darwin.go
+https://golang.hotexamples.com/examples/c/-/proc_pidinfo/golang-proc_pidinfo-function-examples.html
+https://ops.tips/blog/macos-pid-absolute-path-and-procfs-exploration/
+https://fergofrog.com/code/cbowser/xnu/bsd/sys/proc_info.h.html#proc_taskinfo
+https://stackoverflow.com/questions/2838190/mac-os-x-getting-detailed-process-information-specifically-its-launch-argument
+http://mesos.apache.org/api/latest/c++/osx_8hpp_source.html
+https://stackoverflow.com/questions/2838190/mac-os-x-getting-detailed-process-information-specifically-its-launch-argument

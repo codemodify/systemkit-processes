@@ -105,7 +105,7 @@ type Kinfo_proc struct {
 }
 
 func existingUnixProcessByPID(pid int) (contracts.RuningProcess, error) {
-	upm, err := fetchProcMedata(pid)
+	upm, err := fetchUnixProcMetadata(pid)
 	if err != nil {
 		return NewEmptyRuningProcess(), err
 	}
@@ -123,7 +123,7 @@ func existingUnixProcessByPID(pid int) (contracts.RuningProcess, error) {
 	), nil
 }
 
-func fetchProcMedata(pid int) (unixProcMedata, error) {
+func fetchUnixProcMetadata(pid int) (unixProcMedata, error) {
 	mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PID, int32(pid)}
 
 	buf, length, err := call_syscall(mib)

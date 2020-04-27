@@ -15,15 +15,18 @@ import (
 	"github.com/codemodify/systemkit-processes/contracts"
 )
 
-const logID = "SKIT-PROCESS"
+const logID = "PROCESS"
 
-type runingProcessImpl struct {
+// processDoesNotExist -
+const processDoesNotExist = -1
+
+type runingProcess struct {
 	processTemplate contracts.ProcessTemplate
 	osCmd           *exec.Cmd
 	startedAt       time.Time
 	stoppedAt       time.Time
-	parentPID       int
-	lastError       error
+	stdOut          io.ReadCloser
+	stdErr          io.ReadCloser
 }
 
 // NewEmptyRuningProcess -
@@ -33,25 +36,21 @@ func NewEmptyRuningProcess() contracts.RuningProcess {
 
 // NewRuningProcess -
 func NewRuningProcess(processTemplate contracts.ProcessTemplate) contracts.RuningProcess {
-	return &runingProcessImpl{
+	return &runingProcess{
 		processTemplate: processTemplate,
 		osCmd:           nil,
 		startedAt:       time.Unix(0, 0),
 		stoppedAt:       time.Unix(0, 0),
-		parentPID:       -1,
-		lastError:       nil,
 	}
 }
 
 // NewRuningProcessWithOSProc -
 func NewRuningProcessWithOSProc(processTemplate contracts.ProcessTemplate, osProc *os.Process) contracts.RuningProcess {
-	r := &runingProcessImpl{
+	r := &runingProcess{
 		processTemplate: processTemplate,
 		osCmd:           exec.Command(processTemplate.Executable, processTemplate.Args...),
 		startedAt:       time.Unix(0, 0),
 		stoppedAt:       time.Unix(0, 0),
-		parentPID:       -1,
-		lastError:       nil,
 	}
 
 	r.osCmd.Process = osProc
@@ -60,7 +59,7 @@ func NewRuningProcessWithOSProc(processTemplate contracts.ProcessTemplate, osPro
 }
 
 // Start -
-func (thisRef *runingProcessImpl) Start() error {
+func (thisRef *runingProcess) Start() error {
 	thisRef.osCmd = exec.Command(thisRef.processTemplate.Executable, thisRef.processTemplate.Args...)
 
 	// set working folder
@@ -73,68 +72,108 @@ func (thisRef *runingProcessImpl) Start() error {
 		thisRef.osCmd.Env = thisRef.processTemplate.Environment
 	}
 
-	// set stderr and stdout
+	// capture STDOUT, STDERR
 	stdOutPipe, err := thisRef.osCmd.StdoutPipe()
 	if err != nil {
-		detailedErr := fmt.Errorf("%s: failed to get StdoutPipe for [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
-
-		return detailedErr
+		logging.Instance().Errorf("%s: get-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+		return err
 	}
+	thisRef.stdOut = stdOutPipe
 
 	stdErrPipe, err := thisRef.osCmd.StderrPipe()
 	if err != nil {
-		detailedErr := fmt.Errorf("%s, failed to get StderrPipe for [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
-
-		return detailedErr
+		logging.Instance().Errorf("%s: get-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+		return err
 	}
+	thisRef.stdErr = stdErrPipe
 
-	if thisRef.processTemplate.OnStdOut != nil {
-		go readStdOutFromProc(stdOutPipe, thisRef.processTemplate)
-	}
-	if thisRef.processTemplate.OnStdErr != nil {
-		go readStdErrFromProc(stdErrPipe, thisRef.processTemplate)
-	}
-
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting [%s]", logID, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
+	// start
+	logging.Instance().Debugf("%s: start %s @ %s", logID, helpersStrings.AsJSONString(thisRef.processTemplate), helpersReflect.GetThisFuncName())
 
 	err = thisRef.osCmd.Start()
 	if err != nil {
-		thisRef.lastError = err
 		thisRef.stoppedAt = time.Now()
 
-		detailedErr := fmt.Errorf("%s, failed to start [%s], details [%s]", logID, thisRef.processTemplate.Executable, err.Error())
-		logging.Instance().Errorf("%s, from %s", detailedErr.Error(), helpersReflect.GetThisFuncName())
+		detailedErr := fmt.Errorf("%s: start-FAILED %s, %s @ %s", logID, helpersStrings.AsJSONString(thisRef.processTemplate), err.Error(), helpersReflect.GetThisFuncName())
+		logging.Instance().Error(detailedErr.Error())
 
 		return detailedErr
 	}
-
-	// FIXME: fetchDetail like parentPID
 
 	return nil
 }
 
-// IsRunning - tells if the process is running
-func (thisRef runingProcessImpl) IsRunning() bool {
+// Stop - stops the process
+func (thisRef *runingProcess) Stop() error {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
+		return nil
+	}
+
+	var err error
+
+	count := 0
+	maxStopAttempts := 20
+	for {
+		// try #
+		count++
+		if count > maxStopAttempts {
+			logging.Instance().Errorf("%s: stop-FAIL [%s] with PID [%d] @ %s", logID, thisRef.processTemplate.Executable, thisRef.processID(), helpersReflect.GetThisFuncName())
+			break
+		}
+
+		// break if DONE
+		if !thisRef.IsRunning() {
+			logging.Instance().Debugf("%s: stop-SUCCESS [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+			break
+		}
+
+		// log the attempt #
+		logging.Instance().Debugf("%s: stop-ATTEMPT #%d to stop [%s] @ %s", logID, count, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+
+		thisRef.osCmd.Process.Signal(syscall.SIGINT)
+		thisRef.osCmd.Process.Signal(syscall.SIGTERM)
+		thisRef.osCmd.Process.Signal(syscall.SIGKILL)
+		processKillHelper(thisRef.osCmd.Process.Pid)
+
+		err = thisRef.osCmd.Process.Kill()
+
+		time.Sleep(500 * time.Millisecond)
+		thisRef.osCmd.Process.Wait()
+	}
+
+	thisRef.stoppedAt = time.Now()
+
+	return err
+}
+
+// IsRunning - tells if the process is running
+func (thisRef runingProcess) IsRunning() bool {
+	pid := thisRef.processID()
+	if pid == processDoesNotExist {
 		return false
 	}
 
-	runningProcess, err := ProcessByPID(thisRef.osCmd.Process.Pid)
+	rp := thisRef.Details()
+
+	return (rp.State != contracts.ProcessStateNonExistent &&
+		rp.State != contracts.ProcessStateObsolete &&
+		rp.State != contracts.ProcessStateDead)
+}
+
+// Details - return processTemplate about the process
+func (thisRef runingProcess) Details() contracts.RuntimeProcess {
+	rpByPID, err := getRuntimeProcessByPID(thisRef.processID())
 	if err != nil {
-		return false
+		return contracts.RuntimeProcess{
+			State: contracts.ProcessStateNonExistent,
+		}
 	}
 
-	if runningProcess.PID() == thisRef.PID() {
-		return true
-	}
-
-	return runningProcess.IsRunning()
+	return rpByPID
 }
 
 // ExitCode -
-func (thisRef runingProcessImpl) ExitCode() int {
+func (thisRef runingProcess) ExitCode() int {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil || thisRef.osCmd.ProcessState == nil {
 		return 0
 	}
@@ -143,7 +182,7 @@ func (thisRef runingProcessImpl) ExitCode() int {
 }
 
 // StartedAt - returns the time when the process was started
-func (thisRef runingProcessImpl) StartedAt() time.Time {
+func (thisRef runingProcess) StartedAt() time.Time {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
 		return time.Unix(0, 0)
 	}
@@ -152,7 +191,7 @@ func (thisRef runingProcessImpl) StartedAt() time.Time {
 }
 
 // StoppedAt - returns the time when the process was stopped
-func (thisRef runingProcessImpl) StoppedAt() time.Time {
+func (thisRef runingProcess) StoppedAt() time.Time {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
 		return time.Unix(0, 0)
 	}
@@ -160,102 +199,72 @@ func (thisRef runingProcessImpl) StoppedAt() time.Time {
 	return thisRef.stoppedAt
 }
 
-// PID - returns process ID
-func (thisRef *runingProcessImpl) PID() int {
+func (thisRef runingProcess) OnStdOut(outputReader contracts.ProcessOutputReader) {
+	logging.Instance().Debugf("%s: read-StdOut for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+
+	if outputReader != nil {
+		go func() {
+			err := readOutput(thisRef.stdOut, outputReader)
+			if err != nil {
+				logging.Instance().Warningf("%s: read-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+			}
+
+			logging.Instance().Debugf("%s: read-StdOut-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+		}()
+	}
+}
+
+func (thisRef runingProcess) OnStdErr(outputReader contracts.ProcessOutputReader) {
+	logging.Instance().Debugf("%s: read-StdErr for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+
+	if outputReader != nil {
+		go func() {
+			err := readOutput(thisRef.stdErr, outputReader)
+			if err != nil {
+				logging.Instance().Warningf("%s: read-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+			}
+
+			logging.Instance().Debugf("%s: read-StdErr-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+		}()
+	}
+}
+
+func (thisRef *runingProcess) OnStop(stoppedDelegate contracts.ProcessStoppedDelegate) {
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+
+			if !thisRef.IsRunning() {
+				thisRef.Stop() // call this because .osCmd.Process.Wait() is needed
+				if stoppedDelegate != nil {
+					stoppedDelegate()
+				}
+
+				return
+			}
+		}
+	}()
+}
+
+func (thisRef runingProcess) processID() int {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
-		return contracts.ProcessDoesNotExist
+		return processDoesNotExist
 	}
 
 	return thisRef.osCmd.Process.Pid
 }
 
-// ParentPID - returns parent process ID
-func (thisRef *runingProcessImpl) ParentPID() int {
-	return thisRef.parentPID
-}
+func readOutput(readerCloser io.ReadCloser, outputReader contracts.ProcessOutputReader) error {
+	reader := bufio.NewReader(readerCloser)
+	line, _, err := reader.ReadLine()
+	for err != io.EOF {
+		outputReader(line)
+		line, _, err = reader.ReadLine()
+	}
 
-// Stop - stops the process
-func (thisRef *runingProcessImpl) Stop() error {
-	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
+	if err == io.EOF {
 		return nil
 	}
 
-	count := 0
-	maxStopAttempts := 20
-	for {
-		// try #
-		count++
-		if count > maxStopAttempts {
-			thisRef.lastError = fmt.Errorf("%s: can't stop %s with PID %d", logID, thisRef.processTemplate.Executable, thisRef.PID())
-
-			logging.Instance().Errorf("%s, from %s", thisRef.lastError.Error(), helpersReflect.GetThisFuncName())
-
-			break
-		}
-
-		// break if DONE
-		if !thisRef.IsRunning() {
-			logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: stopped [%s]", logID, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
-			break
-		}
-
-		// log the attempt #
-		logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: attempt #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable), helpersReflect.GetThisFuncName())
-
-		thisRef.osCmd.Process.Signal(syscall.SIGINT)
-		thisRef.osCmd.Process.Signal(syscall.SIGTERM)
-		thisRef.osCmd.Process.Signal(syscall.SIGKILL)
-		processKillHelper(thisRef.osCmd.Process.Pid)
-
-		err := thisRef.osCmd.Process.Kill()
-		if err != nil {
-			thisRef.lastError = err
-		}
-
-		time.Sleep(500 * time.Millisecond)
-		thisRef.osCmd.Process.Wait()
-	}
-
-	thisRef.stoppedAt = time.Now()
-
-	return thisRef.lastError
-}
-
-// Details - return processTemplate about the process
-func (thisRef runingProcessImpl) Details() contracts.ProcessTemplate {
-	return thisRef.processTemplate
-}
-
-func readStdOutFromProc(readerCloser io.ReadCloser, processTemplate contracts.ProcessTemplate) {
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting to read StdOut for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
-
-	reader := bufio.NewReader(readerCloser)
-	line, _, err := reader.ReadLine()
-	for err != io.EOF {
-		processTemplate.OnStdOut(line)
-		line, _, err = reader.ReadLine()
-	}
-
-	if err != nil {
-		logging.Instance().Warningf("%s, from %s", fmt.Sprintf("%s: error reading StdOut for [%s], details [%s]", logID, processTemplate.Executable, err.Error()), helpersReflect.GetThisFuncName())
-	}
-
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: finished to read StdOut for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
-}
-
-func readStdErrFromProc(readerCloser io.ReadCloser, processTemplate contracts.ProcessTemplate) {
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: starting to read StdErr for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
-
-	reader := bufio.NewReader(readerCloser)
-	line, _, err := reader.ReadLine()
-	for err != io.EOF {
-		processTemplate.OnStdOut(line)
-		line, _, err = reader.ReadLine()
-	}
-
-	if err != nil {
-		logging.Instance().Warningf("%s, from %s", fmt.Sprintf("%s: error reading StdErr for [%s], details [%s]", logID, processTemplate.Executable, err.Error()), helpersReflect.GetThisFuncName())
-	}
-
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: finished to read StdErr for [%s]", logID, processTemplate.Executable), helpersReflect.GetThisFuncName())
+	return err
 }

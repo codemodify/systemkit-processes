@@ -5,13 +5,14 @@ import (
 	"sync"
 
 	helpersJSON "github.com/codemodify/systemkit-helpers-conv"
+	helpersGuid "github.com/codemodify/systemkit-helpers-guid"
 	helpersReflect "github.com/codemodify/systemkit-helpers-reflection"
 	logging "github.com/codemodify/systemkit-logging"
 	"github.com/codemodify/systemkit-processes/contracts"
 	"github.com/codemodify/systemkit-processes/internal"
 )
 
-const logID = "SKIT-PROCESS-MONITOR"
+const logID = "PROCESS-MONITOR"
 
 // processMonitor - Represents Windows service
 type processMonitor struct {
@@ -28,20 +29,26 @@ func New() contracts.Monitor {
 }
 
 // Spawn -
-func (thisRef *processMonitor) Spawn(id string, processTemplate contracts.ProcessTemplate) error {
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: preparing to spawn [%s], details [%s]", logID, id, helpersJSON.AsJSONString(processTemplate)), helpersReflect.GetThisFuncName())
+func (thisRef *processMonitor) Spawn(processTemplate contracts.ProcessTemplate) (string, error) {
+	tag := helpersGuid.NewGUID()
+	return tag, thisRef.SpawnWithTag(processTemplate, tag)
+}
+
+// SpawnWithID -
+func (thisRef *processMonitor) SpawnWithTag(processTemplate contracts.ProcessTemplate, tag string) error {
+	logging.Instance().Debugf("%s: spawn %s, %s -> %s", logID, tag, helpersJSON.AsJSONString(processTemplate), helpersReflect.GetThisFuncName())
 
 	thisRef.procsSync.Lock()
 
-	thisRef.procs[id] = internal.NewRuningProcess(processTemplate)
+	thisRef.procs[tag] = internal.NewRuningProcess(processTemplate)
 	thisRef.procsSync.Unlock()
 
-	return thisRef.Start(id)
+	return thisRef.Start(tag)
 }
 
 // Start -
-func (thisRef *processMonitor) Start(id string) error {
-	if thisRef.GetRuningProcess(id).IsRunning() {
+func (thisRef *processMonitor) Start(tag string) error {
+	if thisRef.GetProcess(tag).IsRunning() {
 		return nil
 	}
 
@@ -49,15 +56,15 @@ func (thisRef *processMonitor) Start(id string) error {
 	defer thisRef.procsSync.Unlock()
 
 	// CHECK-IF-EXISTS
-	if _, ok := thisRef.procs[id]; !ok {
-		return fmt.Errorf("ID %s, CHECK-IF-EXISTS failed", id)
+	if _, ok := thisRef.procs[tag]; !ok {
+		return fmt.Errorf("ID %s, CHECK-IF-EXISTS failed", tag)
 	}
 
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to start [%s]", logID, id), helpersReflect.GetThisFuncName())
+	logging.Instance().Debugf("%s: start %s @ %s", logID, tag, helpersReflect.GetThisFuncName())
 
-	err := thisRef.procs[id].Start()
+	err := thisRef.procs[tag].Start()
 	if err != nil {
-		logging.Instance().Errorf("%s, from %s", fmt.Sprintf("%s: error starting [%s], details [%s]", logID, thisRef.procs[id], err.Error()), helpersReflect.GetThisFuncName())
+		logging.Instance().Errorf("%s: start-FAIL %s, %s @ %s", logID, thisRef.procs[tag], err.Error(), helpersReflect.GetThisFuncName())
 		return err
 	}
 
@@ -65,27 +72,27 @@ func (thisRef *processMonitor) Start(id string) error {
 }
 
 // Stop -
-func (thisRef *processMonitor) Stop(id string) error {
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to stop [%s]", logID, id), helpersReflect.GetThisFuncName())
+func (thisRef *processMonitor) Stop(tag string) error {
+	logging.Instance().Debugf("%s: stop %s @ %s", logID, tag, helpersReflect.GetThisFuncName())
 
-	if !thisRef.GetRuningProcess(id).IsRunning() {
+	if !thisRef.GetProcess(tag).IsRunning() {
 		return nil
 	}
 
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	return thisRef.procs[id].Stop()
+	return thisRef.procs[tag].Stop()
 }
 
 // Restart -
-func (thisRef processMonitor) Restart(id string) error {
-	err := thisRef.Stop(id)
+func (thisRef processMonitor) Restart(tag string) error {
+	err := thisRef.Stop(tag)
 	if err != nil {
 		return err
 	}
 
-	return thisRef.Start(id)
+	return thisRef.Start(tag)
 }
 
 // StopAll -
@@ -93,7 +100,7 @@ func (thisRef processMonitor) StopAll() []error {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	logging.Instance().Debugf("%s, from %s", fmt.Sprintf("%s: requesting to stop all", logID), helpersReflect.GetThisFuncName())
+	logging.Instance().Debugf("%s: stop-ALL @ %s", logID, helpersReflect.GetThisFuncName())
 
 	allErrors := []error{}
 	for k := range thisRef.procs {
@@ -104,37 +111,37 @@ func (thisRef processMonitor) StopAll() []error {
 }
 
 // GetRuningProcess -
-func (thisRef processMonitor) GetRuningProcess(id string) contracts.RuningProcess {
+func (thisRef processMonitor) GetProcess(tag string) contracts.RuningProcess {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
 	// CHECK-IF-EXISTS
-	if _, ok := thisRef.procs[id]; !ok {
+	if _, ok := thisRef.procs[tag]; !ok {
 		return internal.NewEmptyRuningProcess()
 	}
 
-	return thisRef.procs[id]
+	return thisRef.procs[tag]
 }
 
 // RemoveFromMonitor -
-func (thisRef *processMonitor) RemoveFromMonitor(id string) {
+func (thisRef *processMonitor) RemoveFromMonitor(tag string) {
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
 
-	if _, ok := thisRef.procs[id]; ok {
-		delete(thisRef.procs, id) // delete
+	if _, ok := thisRef.procs[tag]; ok {
+		delete(thisRef.procs, tag) // delete
 	}
 }
 
-// GetAllIDs -
-func (thisRef processMonitor) GetAllIDs() []string {
+// GetAllTags -
+func (thisRef processMonitor) GetAllTags() []string {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	allIds := []string{}
+	allTags := []string{}
 	for k := range thisRef.procs {
-		allIds = append(allIds, k)
+		allTags = append(allTags, k)
 	}
 
-	return allIds
+	return allTags
 }

@@ -5,12 +5,12 @@ import (
 	"github.com/codemodify/systemkit-processes/internal"
 )
 
-// ProcessByPID - finds process by PID
-func ProcessByPID(pid int) (contracts.RuningProcess, error) {
-	return internal.ProcessByPID(pid)
+// GetRuningProcessByPID - finds process by PID
+func GetRuningProcessByPID(pid int) (contracts.RuningProcess, error) {
+	return internal.GetRuningProcessByPID(pid)
 }
 
-// AllProcesses - returns all processes
-func AllProcesses() ([]contracts.RuningProcess, error) {
-	return internal.AllProcesses()
+// GetAllRuningProcesses - returns all processes
+func GetAllRuningProcesses() ([]contracts.RuningProcess, error) {
+	return internal.GetAllRuningProcesses()
 }

@@ -66,7 +66,7 @@ type psinfo_t struct {
 	Pr_lwp      [128]byte /* information for representative lwp */
 }
 
-func fetchProcMedata(pid int) (unixProcMedata, error) {
+func fetchUnixProcMetadata(pid int) (unixProcMedata, error) {
 	path := fmt.Sprintf("/proc/%d/psinfo", pid)
 	fh, err := os.Open(path)
 	if err != nil {

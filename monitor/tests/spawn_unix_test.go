@@ -12,32 +12,31 @@ import (
 	procMon "github.com/codemodify/systemkit-processes/monitor"
 )
 
-func Test_01(t *testing.T) {
-	const logID = "Test_01"
+func TestSpawnUnix(t *testing.T) {
+	const logID = "TestSpawnUnix"
 
 	logging.Instance().Debugf("%s: START", logID)
 
-	processID := "test-id"
-
 	monitor := procMon.New()
-	monitor.Spawn(processID, contracts.ProcessTemplate{
+
+	processTag, _ := monitor.Spawn(contracts.ProcessTemplate{
 		Executable: "sh",
 		Args:       []string{"-c", "while :; do echo 'Hit CTRL+C'; echo aaaaaaa 1>&2; sleep 1; done"},
-		OnStdOut: func(data []byte) {
-			logging.Instance().Debugf("%s: OnStdOut: %v", logID, string(data))
-		},
-		OnStdErr: func(data []byte) {
-			logging.Instance().Debugf("%s: OnStdErr: %v", logID, string(data))
-		},
+	})
+	monitor.GetProcess(processTag).OnStdOut(func(data []byte) {
+		logging.Instance().Debugf("%s: OnStdOut: %v", logID, string(data))
+	})
+	monitor.GetProcess(processTag).OnStdErr(func(data []byte) {
+		logging.Instance().Debugf("%s: OnStdErr: %v", logID, string(data))
 	})
 
 	logging.Instance().Infof(
 		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
 		logID,
-		monitor.GetRuningProcess(processID).IsRunning(),
-		monitor.GetRuningProcess(processID).ExitCode(),
-		monitor.GetRuningProcess(processID).StartedAt(),
-		monitor.GetRuningProcess(processID).StoppedAt(),
+		monitor.GetProcess(processTag).IsRunning(),
+		monitor.GetProcess(processTag).ExitCode(),
+		monitor.GetProcess(processTag).StartedAt(),
+		monitor.GetProcess(processTag).StoppedAt(),
 	)
 
 	// WAIT 5 seconds
@@ -60,14 +59,14 @@ func Test_01(t *testing.T) {
 	// STOP
 	logging.Instance().Debugf("%s: STOP", logID)
 
-	monitor.Stop(processID)
+	monitor.Stop(processTag)
 
 	logging.Instance().Infof(
 		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
 		logID,
-		monitor.GetRuningProcess(processID).IsRunning(),
-		monitor.GetRuningProcess(processID).ExitCode(),
-		monitor.GetRuningProcess(processID).StartedAt(),
-		monitor.GetRuningProcess(processID).StoppedAt(),
+		monitor.GetProcess(processTag).IsRunning(),
+		monitor.GetProcess(processTag).ExitCode(),
+		monitor.GetProcess(processTag).StartedAt(),
+		monitor.GetProcess(processTag).StoppedAt(),
 	)
 }
