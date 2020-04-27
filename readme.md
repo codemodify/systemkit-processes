@@ -29,27 +29,30 @@ go get github.com/codemodify/systemkit-processes
 
 # ![](https://fonts.gstatic.com/s/i/materialicons/bookmarks/v4/24px.svg) API
 
-&nbsp;								| &nbsp;
----									| ---
-find.ProcessByPID(_pid_)			| Find process by PID
-find.AllProcesses()					| Fetches a snapshot of all running processes
-&nbsp;								|
-procMon := `monitor.New()`			| Create a new process monitor
-procMon.`Spawn`(_id_)				| Spawns and monitors a process, tags it with ID
-procMon.`Start`(_id_)				| Starts the process taged with ID
-procMon.`Stop`(_id_)				| Stop the process taged with ID
-procMon.`Restart`(_id_)				| Restart the process taged with ID
-procMon.`StopAl`l()					| Stops all monitored processes
-procMon.`GetRuningProcess`(_id_)	| Gets the running process
-procMon.`RemoveFromMonitor`(_id_)	| Removes a process from being monitred
-procMon.`GetAllIDs`(_id_)			| Returns tags for all monitored processes
-&nbsp;								|
-proc.`Start`(_id_)					| Starts the process
-proc.`IsRunning`(_id_)				| `true` if process is running
-proc.`ExitCode`(_id_)				| Returns the exit code
-proc.`StartedAt`(_id_)				| Started time
-proc.`StoppedAt`(_id_)				| Stopped time
-proc.`PID`(_id_)					| Returns PID
-proc.`ParentPID`(_id_)				| Returns parent PID
-proc.`Stop`(_id_)					| Stops the process (kills it if needed)
-proc.`Details`(_id_)				| Details about the process, like executable name
+&nbsp;										| &nbsp;
+---											| ---
+find.ProcessByPID(_pid_)					| Find process by PID
+find.AllProcesses()							| Fetches a snapshot of all running processes
+&nbsp;										|
+procMon := `monitor.New()`					| Create a new process monitor
+procMon.`Spawn`(_template_)					| Spawns and monitors a process based on a template, generates a tag
+procMon.`SpawnWithTag`(_template_, _tag_)	| Spawns and monitors a process based on a template and custom tag
+procMon.`Start`(_tag_)						| Starts the process taged with ID
+procMon.`Stop`(_tag_)						| Stop the process taged with ID
+procMon.`Restart`(_tag_)					| Restart the process taged with ID
+procMon.`StopAl`l()							| Stops all monitored processes
+procMon.`GetProcess`(_tag_)					| Gets the running process
+procMon.`RemoveFromMonitor`(_tag_)			| Removes a process from being monitred
+procMon.`GetAllTags`()						| Returns tags for all monitored processes
+&nbsp;										|
+proc.`Start`()								| Starts the process
+proc.`Stop`()								| Stops the process (kills it if needed)
+proc.`IsRunning`()							| `true` if process is running
+proc.`Details`()							| Details about the process, like PID, executable name
+proc.`ExitCode`()							| Returns the exit code
+proc.`StartedAt`()							| Started time
+proc.`StoppedAt`()							| Stopped time
+
+proc.`OnStdOut`()							| Set reader for process STDOUT
+proc.`OnStdErr`()							| Set reader for process STDERR
+proc.`OnStop`()								| Set handler when the process stops

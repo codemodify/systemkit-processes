@@ -10,7 +10,7 @@ import (
 )
 
 func TestProcessByPID(t *testing.T) {
-	rp, err := find.GetRuningProcessByPID(os.Getpid())
+	rp, err := find.ProcessByPID(os.Getpid())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

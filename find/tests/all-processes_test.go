@@ -9,7 +9,7 @@ import (
 )
 
 func TestAllProcesses(t *testing.T) {
-	allProcesses, err := find.GetAllRuningProcesses()
+	allProcesses, err := find.AllProcesses()
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
