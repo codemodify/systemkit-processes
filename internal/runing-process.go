@@ -75,27 +75,27 @@ func (thisRef *runingProcess) Start() error {
 	// capture STDOUT, STDERR
 	stdOutPipe, err := thisRef.osCmd.StdoutPipe()
 	if err != nil {
-		logging.Instance().Errorf("%s: get-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+		logging.Errorf("%s: get-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
 		return err
 	}
 	thisRef.stdOut = stdOutPipe
 
 	stdErrPipe, err := thisRef.osCmd.StderrPipe()
 	if err != nil {
-		logging.Instance().Errorf("%s: get-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+		logging.Errorf("%s: get-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
 		return err
 	}
 	thisRef.stdErr = stdErrPipe
 
 	// start
-	logging.Instance().Debugf("%s: start %s @ %s", logID, helpersStrings.AsJSONString(thisRef.processTemplate), helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: start %s @ %s", logID, helpersStrings.AsJSONString(thisRef.processTemplate), helpersReflect.GetThisFuncName())
 
 	err = thisRef.osCmd.Start()
 	if err != nil {
 		thisRef.stoppedAt = time.Now()
 
 		detailedErr := fmt.Errorf("%s: start-FAILED %s, %s @ %s", logID, helpersStrings.AsJSONString(thisRef.processTemplate), err.Error(), helpersReflect.GetThisFuncName())
-		logging.Instance().Error(detailedErr.Error())
+		logging.Error(detailedErr.Error())
 
 		return detailedErr
 	}
@@ -117,18 +117,18 @@ func (thisRef *runingProcess) Stop() error {
 		// try #
 		count++
 		if count > maxStopAttempts {
-			logging.Instance().Errorf("%s: stop-FAIL [%s] with PID [%d] @ %s", logID, thisRef.processTemplate.Executable, thisRef.processID(), helpersReflect.GetThisFuncName())
+			logging.Errorf("%s: stop-FAIL [%s] with PID [%d] @ %s", logID, thisRef.processTemplate.Executable, thisRef.processID(), helpersReflect.GetThisFuncName())
 			break
 		}
 
 		// break if DONE
 		if !thisRef.IsRunning() {
-			logging.Instance().Debugf("%s: stop-SUCCESS [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+			logging.Debugf("%s: stop-SUCCESS [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 			break
 		}
 
 		// log the attempt #
-		logging.Instance().Debugf("%s: stop-ATTEMPT #%d to stop [%s] @ %s", logID, count, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+		logging.Debugf("%s: stop-ATTEMPT #%d to stop [%s] @ %s", logID, count, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 
 		thisRef.osCmd.Process.Signal(syscall.SIGINT)
 		thisRef.osCmd.Process.Signal(syscall.SIGTERM)
@@ -200,31 +200,31 @@ func (thisRef runingProcess) StoppedAt() time.Time {
 }
 
 func (thisRef runingProcess) OnStdOut(outputReader contracts.ProcessOutputReader) {
-	logging.Instance().Debugf("%s: read-StdOut for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: read-StdOut for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 
 	if outputReader != nil {
 		go func() {
 			err := readOutput(thisRef.stdOut, outputReader)
 			if err != nil {
-				logging.Instance().Warningf("%s: read-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+				logging.Warningf("%s: read-StdOut-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
 			}
 
-			logging.Instance().Debugf("%s: read-StdOut-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+			logging.Debugf("%s: read-StdOut-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 		}()
 	}
 }
 
 func (thisRef runingProcess) OnStdErr(outputReader contracts.ProcessOutputReader) {
-	logging.Instance().Debugf("%s: read-StdErr for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: read-StdErr for [%s] @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 
 	if outputReader != nil {
 		go func() {
 			err := readOutput(thisRef.stdErr, outputReader)
 			if err != nil {
-				logging.Instance().Warningf("%s: read-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
+				logging.Warningf("%s: read-StdErr-FAIL for [%s], [%s] @ %s", logID, thisRef.processTemplate.Executable, err.Error(), helpersReflect.GetThisFuncName())
 			}
 
-			logging.Instance().Debugf("%s: read-StdErr-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
+			logging.Debugf("%s: read-StdErr-SUCESS for [%s]  @ %s", logID, thisRef.processTemplate.Executable, helpersReflect.GetThisFuncName())
 		}()
 	}
 }

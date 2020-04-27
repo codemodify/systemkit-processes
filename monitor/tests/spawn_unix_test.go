@@ -15,7 +15,7 @@ import (
 func TestSpawnUnix(t *testing.T) {
 	const logID = "TestSpawnUnix"
 
-	logging.Instance().Debugf("%s: START", logID)
+	logging.Debugf("%s: START", logID)
 
 	monitor := procMon.New()
 
@@ -24,13 +24,13 @@ func TestSpawnUnix(t *testing.T) {
 		Args:       []string{"-c", "while :; do echo 'Hit CTRL+C'; echo aaaaaaa 1>&2; sleep 1; done"},
 	})
 	monitor.GetProcess(processTag).OnStdOut(func(data []byte) {
-		logging.Instance().Debugf("%s: OnStdOut: %v", logID, string(data))
+		logging.Debugf("%s: OnStdOut: %v", logID, string(data))
 	})
 	monitor.GetProcess(processTag).OnStdErr(func(data []byte) {
-		logging.Instance().Debugf("%s: OnStdErr: %v", logID, string(data))
+		logging.Debugf("%s: OnStdErr: %v", logID, string(data))
 	})
 
-	logging.Instance().Infof(
+	logging.Infof(
 		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
 		logID,
 		monitor.GetProcess(processTag).IsRunning(),
@@ -48,7 +48,7 @@ func TestSpawnUnix(t *testing.T) {
 			case <-done:
 				return
 			case t := <-ticker.C:
-				logging.Instance().Debugf("%s: Tick at, %v", logID, t)
+				logging.Debugf("%s: Tick at, %v", logID, t)
 			}
 		}
 	}()
@@ -57,11 +57,11 @@ func TestSpawnUnix(t *testing.T) {
 	done <- true
 
 	// STOP
-	logging.Instance().Debugf("%s: STOP", logID)
+	logging.Debugf("%s: STOP", logID)
 
 	monitor.Stop(processTag)
 
-	logging.Instance().Infof(
+	logging.Infof(
 		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",
 		logID,
 		monitor.GetProcess(processTag).IsRunning(),

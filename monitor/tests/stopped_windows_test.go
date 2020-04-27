@@ -15,7 +15,7 @@ import (
 func TestStoppedUnix(t *testing.T) {
 	const logID = "TestStoppedUnix"
 
-	logging.Instance().Debugf("%s: START", logID)
+	logging.Debugf("%s: START", logID)
 
 	monitor := procMon.New()
 
@@ -26,16 +26,16 @@ func TestStoppedUnix(t *testing.T) {
 		Executable: "notepad.exe",
 	})
 	monitor.GetProcess(processTag).OnStop(func() {
-		logging.Instance().Debugf("%s: OnStop()", logID)
+		logging.Debugf("%s: OnStop()", logID)
 		wg.Done()
 	})
 
-	logging.Instance().Infof(
+	logging.Infof(
 		"%s: pid: %v",
 		logID,
 		monitor.GetProcess(processTag).Details().ProcessID,
 	)
 
 	wg.Wait()
-	logging.Instance().Debugf("%s: STOP", logID)
+	logging.Debugf("%s: STOP", logID)
 }
