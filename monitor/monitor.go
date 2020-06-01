@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	helpersJSON "github.com/codemodify/systemkit-helpers-conv"
-	helpersGuid "github.com/codemodify/systemkit-helpers-guid"
-	helpersReflect "github.com/codemodify/systemkit-helpers-reflection"
 	logging "github.com/codemodify/systemkit-logging"
 	"github.com/codemodify/systemkit-processes/contracts"
+	"github.com/codemodify/systemkit-processes/helpers"
 	"github.com/codemodify/systemkit-processes/internal"
 )
 
@@ -16,27 +14,34 @@ const logID = "PROCESS-MONITOR"
 
 // processMonitor - Represents Windows service
 type processMonitor struct {
-	procs     map[string]contracts.RuningProcess
-	procsSync *sync.RWMutex
+	procs        map[string]contracts.RuningProcess
+	procsSync    *sync.RWMutex
+	procTagIndex int64
 }
 
 // New -
 func New() contracts.Monitor {
 	return &processMonitor{
-		procs:     map[string]contracts.RuningProcess{},
-		procsSync: &sync.RWMutex{},
+		procs:        map[string]contracts.RuningProcess{},
+		procsSync:    &sync.RWMutex{},
+		procTagIndex: 0,
 	}
 }
 
 // Spawn -
 func (thisRef *processMonitor) Spawn(processTemplate contracts.ProcessTemplate) (string, error) {
-	tag := helpersGuid.NewGUID()
+	thisRef.procsSync.Lock()
+	defer thisRef.procsSync.Unlock()
+
+	tag := fmt.Sprintf("gen-tag-%d", thisRef.procTagIndex)
+	thisRef.procTagIndex++
+
 	return tag, thisRef.SpawnWithTag(processTemplate, tag)
 }
 
 // SpawnWithID -
 func (thisRef *processMonitor) SpawnWithTag(processTemplate contracts.ProcessTemplate, tag string) error {
-	logging.Debugf("%s: spawn %s, %s -> %s", logID, tag, helpersJSON.AsJSONString(processTemplate), helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: spawn %s, %s", logID, tag, helpers.AsJSONString(processTemplate))
 
 	thisRef.procsSync.Lock()
 
@@ -60,11 +65,11 @@ func (thisRef *processMonitor) Start(tag string) error {
 		return fmt.Errorf("ID %s, CHECK-IF-EXISTS failed", tag)
 	}
 
-	logging.Debugf("%s: start %s @ %s", logID, tag, helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: start %s", logID, tag)
 
 	err := thisRef.procs[tag].Start()
 	if err != nil {
-		logging.Errorf("%s: start-FAIL %s, %s @ %s", logID, thisRef.procs[tag], err.Error(), helpersReflect.GetThisFuncName())
+		logging.Errorf("%s: start-FAIL %s, %s", logID, thisRef.procs[tag], err.Error())
 		return err
 	}
 
@@ -73,7 +78,7 @@ func (thisRef *processMonitor) Start(tag string) error {
 
 // Stop -
 func (thisRef *processMonitor) Stop(tag string) error {
-	logging.Debugf("%s: stop %s @ %s", logID, tag, helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: stop %s", logID, tag)
 
 	if !thisRef.GetProcess(tag).IsRunning() {
 		return nil
@@ -100,7 +105,7 @@ func (thisRef processMonitor) StopAll() []error {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	logging.Debugf("%s: stop-ALL @ %s", logID, helpersReflect.GetThisFuncName())
+	logging.Debugf("%s: stop-ALL", logID)
 
 	allErrors := []error{}
 	for k := range thisRef.procs {

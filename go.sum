@@ -1,16 +1,8 @@
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d h1:G0m3OIz70MZUWq3EgK3CesDbo8upS2Vm9/P3FtgI+Jk=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
-github.com/codemodify/systemkit-helpers-conv v1.7.9 h1:a3MRS88pBnOauCX82xuZEnHeJSfULQm6mVl9mIfC23Q=
-github.com/codemodify/systemkit-helpers-conv v1.7.9/go.mod h1:yqHcvZcVmd9RPIIi49biNO9ALSY3CFTQeUnOVc1GjDY=
-github.com/codemodify/systemkit-helpers-guid v1.7.9 h1:tbhUeHGDHAGA7nKUkBvOXxNFSGRafI+sFA5WM8YpTsM=
-github.com/codemodify/systemkit-helpers-guid v1.7.9/go.mod h1:PBY47zBxTK7To13nvanJ516EUiSrpPxqDRXS0JKyNyc=
-github.com/codemodify/systemkit-helpers-reflection v1.7.9 h1:vPsYvbOiEZHT+rpoXlRx14IvzsKEAkYy7Aw2QEjF/G0=
-github.com/codemodify/systemkit-helpers-reflection v1.7.9/go.mod h1:HunZSrygIcl5IBmnWAYoDoqvFRVu7GIUvC0/scCfPzY=
 github.com/codemodify/systemkit-logging v1.8.4 h1:nkbj0VpnRnpI4PE4w9HNUv/ySO3A/1Y9LVeT9j+ZvGM=
 github.com/codemodify/systemkit-logging v1.8.4/go.mod h1:29Zc9P/MnY2bgenJU9aoDszUef+Xf40b3ajtusTBC1Q=
 github.com/go-ole/go-ole v1.2.4 h1:nNBDSCOigTSiarFpYE9J/KtEA1IOW4CNeqT9TQDqCxI=
 github.com/go-ole/go-ole v1.2.4/go.mod h1:XCwSNxSkXRo4vlyPy93sltvi/qJq0jqQhjqQNIwKuxM=
-github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
-github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f h1:gWF768j/LaZugp8dyS4UwsslYCYz9XgFxvlgsn0n9H8=
 golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
