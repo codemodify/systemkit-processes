@@ -99,6 +99,8 @@ func (thisRef *runingProcess) Start() error {
 		return detailedErr
 	}
 
+	thisRef.startedAt = time.Now()
+
 	return nil
 }
 
