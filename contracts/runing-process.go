@@ -71,7 +71,7 @@ type RuntimeProcess struct {
 // RuningProcess - represents a running process
 type RuningProcess interface {
 	Start() error
-	Stop() error
+	Stop(waitTimeout time.Duration) error
 	IsRunning() bool
 	Details() RuntimeProcess
 
