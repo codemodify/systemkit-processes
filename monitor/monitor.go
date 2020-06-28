@@ -3,6 +3,7 @@ package monitor
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	logging "github.com/codemodify/systemkit-logging"
 	"github.com/codemodify/systemkit-processes/contracts"
@@ -78,6 +79,10 @@ func (thisRef *processMonitor) Start(tag string) error {
 
 // Stop -
 func (thisRef *processMonitor) Stop(tag string) error {
+	return thisRef.StopWithTimeout(tag, 3, 0*time.Millisecond)
+}
+
+func (thisRef *processMonitor) StopWithTimeout(tag string, attempts int, waitTimeout time.Duration) error {
 	logging.Debugf("%s: stop %s", logID, tag)
 
 	if !thisRef.GetProcess(tag).IsRunning() {
@@ -87,7 +92,7 @@ func (thisRef *processMonitor) Stop(tag string) error {
 	thisRef.procsSync.RLock()
 	defer thisRef.procsSync.RUnlock()
 
-	return thisRef.procs[tag].Stop()
+	return thisRef.procs[tag].Stop(attempts, waitTimeout)
 }
 
 // Restart -
