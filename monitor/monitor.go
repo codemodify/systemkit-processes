@@ -89,8 +89,8 @@ func (thisRef *processMonitor) StopWithTimeout(tag string, attempts int, waitTim
 		return nil
 	}
 
-	thisRef.procsSync.RLock()
-	defer thisRef.procsSync.RUnlock()
+	thisRef.procsSync.Lock()
+	defer thisRef.procsSync.Unlock()
 
 	return thisRef.procs[tag].Stop(attempts, waitTimeout)
 }
@@ -107,8 +107,8 @@ func (thisRef processMonitor) Restart(tag string) error {
 
 // StopAll -
 func (thisRef processMonitor) StopAll() []error {
-	thisRef.procsSync.RLock()
-	defer thisRef.procsSync.RUnlock()
+	thisRef.procsSync.Lock()
+	defer thisRef.procsSync.Unlock()
 
 	logging.Debugf("%s: stop-ALL", logID)
 
@@ -122,8 +122,8 @@ func (thisRef processMonitor) StopAll() []error {
 
 // GetRuningProcess -
 func (thisRef processMonitor) GetProcess(tag string) contracts.RuningProcess {
-	thisRef.procsSync.RLock()
-	defer thisRef.procsSync.RUnlock()
+	thisRef.procsSync.Lock()
+	defer thisRef.procsSync.Unlock()
 
 	// CHECK-IF-EXISTS
 	if _, ok := thisRef.procs[tag]; !ok {
@@ -145,8 +145,8 @@ func (thisRef *processMonitor) RemoveFromMonitor(tag string) {
 
 // GetAllTags -
 func (thisRef processMonitor) GetAllTags() []string {
-	thisRef.procsSync.RLock()
-	defer thisRef.procsSync.RUnlock()
+	thisRef.procsSync.Lock()
+	defer thisRef.procsSync.Unlock()
 
 	allTags := []string{}
 	for k := range thisRef.procs {
