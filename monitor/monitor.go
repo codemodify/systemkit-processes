@@ -16,7 +16,7 @@ const logID = "PROCESS-MONITOR"
 // processMonitor - Represents Windows service
 type processMonitor struct {
 	procs        map[string]contracts.RuningProcess
-	procsSync    *sync.RWMutex
+	procsSync    *sync.Mutex
 	procTagIndex int64
 }
 
@@ -24,7 +24,7 @@ type processMonitor struct {
 func New() contracts.Monitor {
 	return &processMonitor{
 		procs:        map[string]contracts.RuningProcess{},
-		procsSync:    &sync.RWMutex{},
+		procsSync:    &sync.Mutex{},
 		procTagIndex: 0,
 	}
 }
@@ -45,7 +45,6 @@ func (thisRef *processMonitor) SpawnWithTag(processTemplate contracts.ProcessTem
 	logging.Debugf("%s: spawn %s, %s", logID, tag, helpers.AsJSONString(processTemplate))
 
 	thisRef.procsSync.Lock()
-
 	thisRef.procs[tag] = internal.NewRuningProcess(processTemplate)
 	thisRef.procsSync.Unlock()
 
@@ -91,6 +90,11 @@ func (thisRef *processMonitor) StopWithTimeout(tag string, attempts int, waitTim
 
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
+
+	// CHECK-IF-EXISTS
+	if _, ok := thisRef.procs[tag]; !ok {
+		return nil
+	}
 
 	return thisRef.procs[tag].Stop(attempts, waitTimeout)
 }
