@@ -100,7 +100,7 @@ func (thisRef *processMonitor) StopWithTimeout(tag string, attempts int, waitTim
 }
 
 // Restart -
-func (thisRef processMonitor) Restart(tag string) error {
+func (thisRef *processMonitor) Restart(tag string) error {
 	err := thisRef.Stop(tag)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (thisRef processMonitor) Restart(tag string) error {
 }
 
 // StopAll -
-func (thisRef processMonitor) StopAll() []error {
+func (thisRef *processMonitor) StopAll() []error {
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
 
@@ -125,7 +125,7 @@ func (thisRef processMonitor) StopAll() []error {
 }
 
 // GetRuningProcess -
-func (thisRef processMonitor) GetProcess(tag string) contracts.RuningProcess {
+func (thisRef *processMonitor) GetProcess(tag string) contracts.RuningProcess {
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
 
@@ -148,7 +148,7 @@ func (thisRef *processMonitor) RemoveFromMonitor(tag string) {
 }
 
 // GetAllTags -
-func (thisRef processMonitor) GetAllTags() []string {
+func (thisRef *processMonitor) GetAllTags() []string {
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
 
