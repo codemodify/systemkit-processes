@@ -129,70 +129,64 @@ func (thisRef *runingProcess) Stop(attempts int, waitTimeout time.Duration) erro
 		// log the STOP attempt #
 
 		for i := 0; i < attempts; i++ {
-			logging.Debugf("%s: stop-ATTEMPT-SIGINT #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable)
+			logging.Debugf("%s: stop-ATTEMPT-SIGINT #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
 			thisRef.osCmd.Process.Signal(syscall.SIGINT)
+			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
 				thisRef.stoppedAt = time.Now()
 				logging.Debugf("%s: stop-SUCCESS [%s]", logID, thisRef.processTemplate.Executable)
 				return nil
 			}
-
-			time.Sleep(waitTimeout)
 		}
 
 		for i := 0; i < attempts; i++ {
-			logging.Debugf("%s: stop-ATTEMPT-SIGTERM #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable)
+			logging.Debugf("%s: stop-ATTEMPT-SIGTERM #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
 			thisRef.osCmd.Process.Signal(syscall.SIGTERM)
+			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
 				thisRef.stoppedAt = time.Now()
 				logging.Debugf("%s: stop-SUCCESS [%s]", logID, thisRef.processTemplate.Executable)
 				return nil
 			}
-
-			time.Sleep(waitTimeout)
 		}
 
 		for i := 0; i < attempts; i++ {
-			logging.Debugf("%s: stop-ATTEMPT-SIGKILL #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable)
+			logging.Debugf("%s: stop-ATTEMPT-SIGKILL #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
 			thisRef.osCmd.Process.Signal(syscall.SIGKILL)
+			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
 				thisRef.stoppedAt = time.Now()
 				logging.Debugf("%s: stop-SUCCESS [%s]", logID, thisRef.processTemplate.Executable)
 				return nil
 			}
-
-			time.Sleep(waitTimeout)
 		}
 
 		for i := 0; i < attempts; i++ {
-			logging.Debugf("%s: stop-ATTEMPT-aggressive-kill-1 #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable)
+			logging.Debugf("%s: stop-ATTEMPT-aggressive-kill-1 #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
 			processKillHelper(thisRef.osCmd.Process.Pid)
+			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
 				thisRef.stoppedAt = time.Now()
 				logging.Debugf("%s: stop-SUCCESS [%s]", logID, thisRef.processTemplate.Executable)
 				return nil
 			}
-
-			time.Sleep(waitTimeout)
 		}
 
 		for i := 0; i < attempts; i++ {
-			logging.Debugf("%s: stop-ATTEMPT-aggressive-kill-2 #%d to stop [%s]", logID, count, thisRef.processTemplate.Executable)
+			logging.Debugf("%s: stop-ATTEMPT-aggressive-kill-2 #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
 			err = thisRef.osCmd.Process.Kill()
+			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
 				thisRef.stoppedAt = time.Now()
 				logging.Debugf("%s: stop-SUCCESS [%s]", logID, thisRef.processTemplate.Executable)
 				return nil
 			}
-
-			time.Sleep(waitTimeout)
 		}
-
 	}
 
 	return err
