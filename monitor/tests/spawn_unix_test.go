@@ -23,12 +23,12 @@ func TestSpawnUnix(t *testing.T) {
 		Executable: "sh",
 		Args:       []string{"-c", "while :; do echo 'Hit CTRL+C'; echo aaaaaaa 1>&2; sleep 1; done"},
 	})
-	monitor.GetProcess(processTag).OnStdOut(func(data []byte) {
-		logging.Debugf("%s: OnStdOut: %v", logID, string(data))
-	})
-	monitor.GetProcess(processTag).OnStdErr(func(data []byte) {
-		logging.Debugf("%s: OnStdErr: %v", logID, string(data))
-	})
+	monitor.GetProcess(processTag).OnStdOut(func(params interface{}, outputData []byte) {
+		logging.Debugf("%s: OnStdOut: %v", logID, string(outputData))
+	}, nil)
+	monitor.GetProcess(processTag).OnStdErr(func(params interface{}, outputData []byte) {
+		logging.Debugf("%s: OnStdErr: %v", logID, string(outputData))
+	}, nil)
 
 	logging.Infof(
 		"%s: IsRunning: %v, ExitCode: %v, StartedAt: %v, StoppedAt: %v",

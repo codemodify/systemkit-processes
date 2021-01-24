@@ -10,7 +10,7 @@ type Monitor interface {
 	Stop(tag string) error
 	StopWithTimeout(tag string, attempts int, waitTimeout time.Duration) error
 	Restart(tag string) error
-	StopAll() []error
+	StopAllInParallel()
 	GetProcess(tag string) RuningProcess
 	RemoveFromMonitor(tag string)
 	GetAllTags() []string

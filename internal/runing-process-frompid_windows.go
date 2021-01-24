@@ -3,11 +3,10 @@
 package internal
 
 import (
-	"fmt"
-	"strings"
-	"time"
+	"path/filepath"
+	"syscall"
+	"unsafe"
 
-	"github.com/StackExchange/wmi"
 	"golang.org/x/sys/windows"
 
 	"github.com/codemodify/systemkit-processes/contracts"
@@ -53,77 +52,60 @@ func getAllRuningProcesses() ([]contracts.RuningProcess, error) {
 }
 
 func getRuntimeProcessByPID(pid int) (contracts.RuntimeProcess, error) {
-	var processes []Win32_Process
-
-	wmiQuery := wmi.CreateQuery(&processes, fmt.Sprintf("WHERE ProcessID = %d", pid))
-	if err := wmi.Query(wmiQuery, &processes); err != nil {
+	handle, err := windows.CreateToolhelp32Snapshot(0x00000002, 0)
+	if handle < 0 || err != nil {
 		return contracts.RuntimeProcess{
 			State: contracts.ProcessStateUnknown,
 		}, err
 	}
 
-	if len(processes) == 0 {
+	var processEntry windows.ProcessEntry32
+	processEntry.Size = uint32(unsafe.Sizeof(processEntry))
+
+	err = windows.Process32First(handle, &processEntry)
+	if err != nil {
 		return contracts.RuntimeProcess{
-			State: contracts.ProcessStateNonExistent,
-		}, contracts.ErrProcessDoesNotExist
+			State: contracts.ProcessStateUnknown,
+		}, err
 	}
 
-	args := *processes[0].CommandLine
-	args = strings.Replace(args, processes[0].Name, "", 1)
+	for {
+		if processEntry.ProcessID == uint32(pid) {
+			executable := getExecutabe(&processEntry)
 
-	cwd := *processes[0].ExecutablePath
-	cwd = strings.Replace(cwd, processes[0].Name, "", 1)
+			return contracts.RuntimeProcess{
+				Executable:       executable,
+				ExecutableName:   filepath.Base(executable),
+				Args:             []string{},
+				WorkingDirectory: "",
+				Environment:      []string{},
+				ProcessID:        int(processEntry.ProcessID),
+				ParentProcessID:  int(processEntry.ParentProcessID),
+				UserID:           0,
+				GroupID:          0,
+				State:            contracts.ProcessStateRunning,
+			}, nil
+		}
+
+		err = windows.Process32Next(handle, &processEntry)
+		if err != nil {
+			break
+		}
+	}
 
 	return contracts.RuntimeProcess{
-		Executable:       *processes[0].ExecutablePath,
-		ExecutableName:   processes[0].Name,
-		Args:             strings.Split(args, " "),
-		WorkingDirectory: cwd,
-		Environment:      []string{},
-		ProcessID:        int(processes[0].ProcessID),
-		ParentProcessID:  int(processes[0].ParentProcessID),
-		UserID:           0,
-		GroupID:          0,
-		State:            contracts.ProcessStateRunning,
+		State: contracts.ProcessStateUnknown,
 	}, nil
 }
 
-type Win32_Process struct {
-	Name            string
-	ExecutablePath  *string
-	CommandLine     *string
-	ProcessID       uint32
-	Status          *string
-	ParentProcessID uint32
+func getExecutabe(processEntry *windows.ProcessEntry32) string {
+	end := 0
+	for {
+		if processEntry.ExeFile[end] == 0 {
+			break
+		}
+		end++
+	}
 
-	Priority              uint32
-	CreationDate          *time.Time
-	ThreadCount           uint32
-	ReadOperationCount    uint64
-	ReadTransferCount     uint64
-	WriteOperationCount   uint64
-	WriteTransferCount    uint64
-	CSCreationClassName   string
-	CSName                string
-	Caption               *string
-	CreationClassName     string
-	Description           *string
-	ExecutionState        *uint16
-	HandleCount           uint32
-	KernelModeTime        uint64
-	MaximumWorkingSetSize *uint32
-	MinimumWorkingSetSize *uint32
-	OSCreationClassName   string
-	OSName                string
-	OtherOperationCount   uint64
-	OtherTransferCount    uint64
-	PageFaults            uint32
-	PageFileUsage         uint32
-	PeakPageFileUsage     uint32
-	PeakVirtualSize       uint64
-	PeakWorkingSetSize    uint32
-	PrivatePageCount      uint64
-	TerminationDate       *time.Time
-	UserModeTime          uint64
-	WorkingSetSize        uint64
+	return syscall.UTF16ToString(processEntry.ExeFile[:end])
 }

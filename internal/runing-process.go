@@ -59,6 +59,7 @@ func NewRuningProcessWithOSProc(processTemplate contracts.ProcessTemplate, osPro
 
 // Start -
 func (thisRef *runingProcess) Start() error {
+
 	thisRef.osCmd = exec.Command(thisRef.processTemplate.Executable, thisRef.processTemplate.Args...)
 
 	// set working folder
@@ -71,7 +72,7 @@ func (thisRef *runingProcess) Start() error {
 		thisRef.osCmd.Env = thisRef.processTemplate.Environment
 	}
 
-	// capture STDOUT, STDERR
+	// capture STDERR
 	stdOutPipe, err := thisRef.osCmd.StdoutPipe()
 	if err != nil {
 		logging.Errorf("%s: get-StdOut-FAIL for [%s], [%s]", logID, thisRef.processTemplate.Executable, err.Error())
@@ -79,12 +80,15 @@ func (thisRef *runingProcess) Start() error {
 	}
 	thisRef.stdOut = stdOutPipe
 
+	// capture STDERR
 	stdErrPipe, err := thisRef.osCmd.StderrPipe()
 	if err != nil {
 		logging.Errorf("%s: get-StdErr-FAIL for [%s], [%s]", logID, thisRef.processTemplate.Executable, err.Error())
 		return err
 	}
 	thisRef.stdErr = stdErrPipe
+
+	thisRef.osCmd.SysProcAttr = procAttrs
 
 	// start
 	logging.Debugf("%s: start %s", logID, helpers.AsJSONString(thisRef.processTemplate))
@@ -105,7 +109,7 @@ func (thisRef *runingProcess) Start() error {
 }
 
 // Stop - stops the process
-func (thisRef *runingProcess) Stop(attempts int, waitTimeout time.Duration) error {
+func (thisRef *runingProcess) Stop(tag string, attempts int, waitTimeout time.Duration) error {
 	if thisRef.osCmd == nil || thisRef.osCmd.Process == nil {
 		return nil
 	}
@@ -114,8 +118,23 @@ func (thisRef *runingProcess) Stop(attempts int, waitTimeout time.Duration) erro
 		return nil
 	}
 
-	var err error
+	// go func() {
+	// 	if thisRef.stdOut != nil {
+	// 		thisRef.stdOut.Close()
+	// 	}
 
+	// 	if thisRef.stdErr != nil {
+	// 		thisRef.stdErr.Close()
+	// 	}
+	// }()
+
+	defer func() {
+		logging.Debugf("%s: STOP-END %s", logID, tag)
+	}()
+
+	logging.Debugf("%s: STOP-START %s", logID, tag)
+
+	var err error
 	count := 0
 	maxStopAttempts := 20
 	for {
@@ -130,7 +149,9 @@ func (thisRef *runingProcess) Stop(attempts int, waitTimeout time.Duration) erro
 
 		for i := 0; i < attempts; i++ {
 			logging.Debugf("%s: stop-ATTEMPT-SIGINT #%d to stop [%s]", logID, i, thisRef.processTemplate.Executable)
-			thisRef.osCmd.Process.Signal(syscall.SIGINT)
+			thisRef.osCmd.Process.Signal(syscall.SIGINT) // this works on all except on Windows
+			sendCtrlC(thisRef.osCmd.Process.Pid)         // this works on Windows
+
 			time.Sleep(waitTimeout)
 			if !thisRef.IsRunning() {
 				thisRef.osCmd.Process.Wait()
@@ -203,7 +224,8 @@ func (thisRef runingProcess) IsRunning() bool {
 
 	return (rp.State != contracts.ProcessStateNonExistent &&
 		rp.State != contracts.ProcessStateObsolete &&
-		rp.State != contracts.ProcessStateDead)
+		rp.State != contracts.ProcessStateDead &&
+		rp.State != contracts.ProcessStateUnknown)
 }
 
 // Details - return processTemplate about the process
@@ -245,12 +267,12 @@ func (thisRef runingProcess) StoppedAt() time.Time {
 	return thisRef.stoppedAt
 }
 
-func (thisRef runingProcess) OnStdOut(outputReader contracts.ProcessOutputReader) {
+func (thisRef runingProcess) OnStdOut(outputReader contracts.ProcessOutputReader, params interface{}) {
 	logging.Debugf("%s: read-StdOut for [%s]", logID, thisRef.processTemplate.Executable)
 
 	if outputReader != nil {
 		go func() {
-			err := readOutput(thisRef.stdOut, outputReader)
+			err := readOutput(thisRef.stdOut, outputReader, params)
 			if err != nil {
 				logging.Warningf("%s: read-StdOut-FAIL for [%s], [%s]", logID, thisRef.processTemplate.Executable, err.Error())
 			}
@@ -260,12 +282,12 @@ func (thisRef runingProcess) OnStdOut(outputReader contracts.ProcessOutputReader
 	}
 }
 
-func (thisRef runingProcess) OnStdErr(outputReader contracts.ProcessOutputReader) {
+func (thisRef runingProcess) OnStdErr(outputReader contracts.ProcessOutputReader, params interface{}) {
 	logging.Debugf("%s: read-StdErr for [%s]", logID, thisRef.processTemplate.Executable)
 
 	if outputReader != nil {
 		go func() {
-			err := readOutput(thisRef.stdErr, outputReader)
+			err := readOutput(thisRef.stdErr, outputReader, params)
 			if err != nil {
 				logging.Warningf("%s: read-StdErr-FAIL for [%s], [%s]", logID, thisRef.processTemplate.Executable, err.Error())
 			}
@@ -275,21 +297,21 @@ func (thisRef runingProcess) OnStdErr(outputReader contracts.ProcessOutputReader
 	}
 }
 
-func (thisRef *runingProcess) OnStop(stoppedDelegate contracts.ProcessStoppedDelegate) {
-	go func() {
+func (thisRef *runingProcess) OnStop(stoppedDelegate contracts.ProcessStoppedDelegate, params interface{}) {
+	go func(paramsToPass interface{}) {
 		for {
 			time.Sleep(1 * time.Second)
 
 			if !thisRef.IsRunning() {
-				thisRef.Stop(1, 100*time.Millisecond) // call this because .osCmd.Process.Wait() is needed
+				thisRef.Stop("", 1, 100*time.Millisecond) // call this because .osCmd.Process.Wait() is needed
 				if stoppedDelegate != nil {
-					stoppedDelegate()
+					stoppedDelegate(paramsToPass)
 				}
 
 				return
 			}
 		}
-	}()
+	}(params)
 }
 
 func (thisRef runingProcess) processID() int {
@@ -300,11 +322,15 @@ func (thisRef runingProcess) processID() int {
 	return thisRef.osCmd.Process.Pid
 }
 
-func readOutput(readerCloser io.ReadCloser, outputReader contracts.ProcessOutputReader) error {
+func readOutput(readerCloser io.ReadCloser, outputReader contracts.ProcessOutputReader, params interface{}) error {
 	reader := bufio.NewReader(readerCloser)
 	line, _, err := reader.ReadLine()
-	for err != io.EOF {
-		outputReader(line)
+	for {
+		if err != nil {
+			break
+		}
+
+		outputReader(params, line)
 		line, _, err = reader.ReadLine()
 	}
 

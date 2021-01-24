@@ -25,10 +25,10 @@ func TestStoppedUnix(t *testing.T) {
 	processTag, _ := monitor.Spawn(contracts.ProcessTemplate{
 		Executable: "vim",
 	})
-	monitor.GetProcess(processTag).OnStop(func() {
+	monitor.GetProcess(processTag).OnStop(func(params interface{}) {
 		logging.Debugf("%s: OnStop()", logID)
 		wg.Done()
-	})
+	}, nil)
 
 	logging.Infof(
 		"%s: pid: %v",

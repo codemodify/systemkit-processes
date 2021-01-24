@@ -97,8 +97,8 @@ func getRuntimeProcessByPID(pid int) (contracts.RuntimeProcess, error) {
 	}
 
 	// 2 - read cwd
-	fi, _ := os.Lstat(path.Join(folder, "cwd"))
-	if fi.Mode()&os.ModeSymlink != 0 {
+	fi, err := os.Lstat(path.Join(folder, "cwd"))
+	if err == nil && fi != nil && fi.Mode()&os.ModeSymlink != 0 {
 		procMedata.WorkingDirectory, _ = os.Readlink(path.Join(folder, "cwd"))
 	}
 

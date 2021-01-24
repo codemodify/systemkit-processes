@@ -82,21 +82,24 @@ func (thisRef *processMonitor) Stop(tag string) error {
 }
 
 func (thisRef *processMonitor) StopWithTimeout(tag string, attempts int, waitTimeout time.Duration) error {
-	logging.Debugf("%s: stop %s", logID, tag)
-
 	if !thisRef.GetProcess(tag).IsRunning() {
 		return nil
 	}
 
 	thisRef.procsSync.Lock()
-	defer thisRef.procsSync.Unlock()
 
 	// CHECK-IF-EXISTS
-	if _, ok := thisRef.procs[tag]; !ok {
+	var rp contracts.RuningProcess
+	var keyExists bool
+
+	if rp, keyExists = thisRef.procs[tag]; !keyExists {
+		thisRef.procsSync.Unlock()
 		return nil
 	}
 
-	return thisRef.procs[tag].Stop(attempts, waitTimeout)
+	thisRef.procsSync.Unlock()
+
+	return rp.Stop(tag, attempts, waitTimeout)
 }
 
 // Restart -
@@ -110,18 +113,15 @@ func (thisRef *processMonitor) Restart(tag string) error {
 }
 
 // StopAll -
-func (thisRef *processMonitor) StopAll() []error {
+func (thisRef *processMonitor) StopAllInParallel() {
 	thisRef.procsSync.Lock()
 	defer thisRef.procsSync.Unlock()
 
-	logging.Debugf("%s: stop-ALL", logID)
-
-	allErrors := []error{}
 	for k := range thisRef.procs {
-		allErrors = append(allErrors, thisRef.Stop(k))
+		go func(tag string) {
+			thisRef.Stop(tag)
+		}(k)
 	}
-
-	return allErrors
 }
 
 // GetRuningProcess -

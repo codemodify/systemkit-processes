@@ -71,7 +71,7 @@ type RuntimeProcess struct {
 // RuningProcess - represents a running process
 type RuningProcess interface {
 	Start() error
-	Stop(attempts int, waitTimeout time.Duration) error
+	Stop(tag string, attempts int, waitTimeout time.Duration) error
 	IsRunning() bool
 	Details() RuntimeProcess
 
@@ -79,7 +79,7 @@ type RuningProcess interface {
 	StartedAt() time.Time
 	StoppedAt() time.Time
 
-	OnStdOut(outputReader ProcessOutputReader)
-	OnStdErr(outputReader ProcessOutputReader)
-	OnStop(stoppedDelegate ProcessStoppedDelegate)
+	OnStdOut(outputReader ProcessOutputReader, params interface{})
+	OnStdErr(outputReader ProcessOutputReader, params interface{})
+	OnStop(stoppedDelegate ProcessStoppedDelegate, params interface{})
 }
